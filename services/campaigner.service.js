@@ -168,7 +168,7 @@ export const getCampaignerService = async (req) => {
   const campaigners = await Campaigner.find(obj)
     .populate("templeDevoteInTouch", "-createdAt -updatedAt")
     .populate("campaignId", "-createdAt -updatedAt")
-    .sort({ createdAt: -1 })
+    .sort({ raisedAmount: -1 })
     .skip(skip)
     .limit(pageSize)
     .select("-createdAt -updatedAt");
