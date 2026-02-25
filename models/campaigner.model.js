@@ -33,9 +33,9 @@ const campaignerSchema = new mongoose.Schema(
       default: 0,
     },
     templeDevoteInTouch: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "TempleDevote",
       required: true,
-      trim: true,
     },
     status: {
       type: String,

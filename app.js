@@ -1,7 +1,25 @@
 import express from "express";
 import cors from "cors";
+import bodyParser from "body-parser";
+const noCache = (req, res, next) => {
+  res.set({
+    "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+    Pragma: "no-cache",
+    Expires: "0",
+    "Surrogate-Control": "no-store",
+  });
+  next();
+};
 const app = express();
 const allowedOrigin = ["http://localhost:5173"];
+import webhookRouter from "./routes/webhook.route.js";
+app.use(
+  "/api/webhooks",
+  bodyParser.raw({ type: "application/json" }),
+  webhookRouter,
+);
+app.use(noCache);
+
 app.use(express.json());
 app.use(
   cors({
@@ -12,7 +30,7 @@ app.use(
         cb(new Error("Not allowed by cors"));
       }
     },
-    methods : ["GET","POST","PUT","PATCH","DELETE","OPTIONS"]
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   }),
 );
 

@@ -42,7 +42,7 @@ const donationSchema = new mongoose.Schema(
       uppercase: true,
       match: /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/,
     },
-    paymentGatewary: {
+    paymentGateway: {
       type: String,
       default: "razorypay",
       immutable: true,

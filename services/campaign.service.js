@@ -33,7 +33,7 @@ export const createCampaignService = async (req) => {
   if (parsedDate < today) {
     throw new AppError("Start date cannot be in the past", 400);
   }
- 
+
   const parsedEndDate = new Date(endDate);
 
   if (isNaN(parsedEndDate.getTime())) {
@@ -58,6 +58,24 @@ export const createCampaignService = async (req) => {
   return {
     status: 201,
     message: "Campaign Created Successfully",
+    campaign,
+  };
+};
+
+export const getCurrentCampaignService = async (req) => {
+  const status = req.query.status;
+
+  const campaign = await Campaign.findOne({ status }).select(
+    "-createdAt -updatedAt",
+  );
+
+  if (!campaign) {
+    throw new AppError("Campaign not found", 404);
+  }
+
+  return {
+    status: 200,
+    message: "Campaign fetched successfully",
     campaign,
   };
 };

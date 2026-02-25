@@ -166,11 +166,12 @@ export const getCampaignerService = async (req) => {
   }
 
   const campaigners = await Campaigner.find(obj)
-    .populate("templeDevoteInTouch")
-    .populate("campaignId")
+    .populate("templeDevoteInTouch", "-createdAt -updatedAt")
+    .populate("campaignId", "-createdAt -updatedAt")
     .sort({ createdAt: -1 })
     .skip(skip)
     .limit(pageSize)
+    .select("-createdAt -updatedAt")
     .lean();
 
   const campaignersWithImages = await attachImageUrl(campaigners);
