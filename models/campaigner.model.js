@@ -12,6 +12,10 @@ const campaignerSchema = new mongoose.Schema(
         type: String,
         required: true,
       },
+      url: {
+        type: String,
+        required: true,
+      },
     },
     campaignId: {
       type: mongoose.Schema.Types.ObjectId,

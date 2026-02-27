@@ -3,9 +3,9 @@ import { AppError } from "../utils/AppError.js";
 import Campaign from "../models/campaign.model.js";
 import Media from "../models/media.model.js";
 import Campaigner from "../models/campaigner.model.js";
-import { getSignedImageUrl, uploadToGCS } from "../utils/GCS.js";
+import { uploadToGCS } from "../utils/GCS.js";
 import TempleDevote from "../models/templeDevote.model.js";
-import { attachImageUrl } from "../utils/attachImageUrls.js";
+import Donation from "../models/donation.model.js";
 
 export const createCampaignerService = async (req) => {
   const {
@@ -85,6 +85,7 @@ export const createCampaignerService = async (req) => {
 
     imageResult = {
       filename: media.image.filename,
+      url: media.image.url,
     };
   } else {
     if (!req.file) {
@@ -93,7 +94,7 @@ export const createCampaignerService = async (req) => {
 
     const uploadResult = await uploadToGCS(req.file);
 
-    if (!uploadResult.filename) {
+    if (!uploadResult.filename || !uploadResult.url) {
       throw new AppError(`Image upload failed`, 500);
     }
 
@@ -101,14 +102,15 @@ export const createCampaignerService = async (req) => {
       name,
       image: {
         filename: uploadResult?.filename,
+        url: uploadResult?.url,
       },
     });
 
     imageResult = {
       filename: media.image.filename,
+      url: media.image.url,
     };
   }
-  const imageUrl = await getSignedImageUrl(imageResult.filename);
   const newCampaigner = await Campaigner.create({
     name,
     phoneNumber,
@@ -118,18 +120,14 @@ export const createCampaignerService = async (req) => {
     status: "active",
     image: {
       filename: imageResult?.filename,
+      url: imageResult?.url,
     },
   });
 
   return {
     status: 201,
     message: "campaigner created successfully",
-    newCampaigner: {
-      ...newCampaigner.toObject(),
-      image: {
-        url: imageUrl,
-      },
-    },
+    newCampaigner,
   };
 };
 
@@ -139,6 +137,10 @@ export const getCampaignerService = async (req) => {
   const pageSize = parseInt(req.query.pageSize) || 12;
   const skip = (page - 1) * pageSize;
   const status = req.query.status;
+
+  if (!campId) {
+    throw new AppError("CampaignId is required", 400);
+  }
 
   if (!mongoose.isValidObjectId(campId)) {
     throw new AppError(`Invalid campaginId: ${campId}`);
@@ -173,12 +175,6 @@ export const getCampaignerService = async (req) => {
     .limit(pageSize)
     .select("-createdAt -updatedAt");
 
-  const campaignersPlain = campaigners.map((doc) =>
-    doc.toObject({ virtuals: true }),
-  );
-
-  const campaignersWithImages = await attachImageUrl(campaignersPlain);
-
   const totalCampaigners = await Campaigner.countDocuments({
     campaignId: campId,
     status: "active",
@@ -187,7 +183,136 @@ export const getCampaignerService = async (req) => {
   return {
     status: 200,
     message: "Fetched campaigners successfully.",
-    campaigners: campaignersWithImages,
+    campaigners: campaigners,
     count: totalCampaigners,
+  };
+};
+
+export const getSingleCampaignerService = async (req) => {
+  const { campaignerId } = req.params;
+
+  if (!campaignerId) {
+    throw new AppError("campaignerId is required", 400);
+  }
+
+  if (!mongoose.isValidObjectId(campaignerId)) {
+    throw new AppError(`Invalid campaignerId: ${campaignerId}`, 400);
+  }
+
+  const campaginer = await Campaigner.findById(campaignerId)
+    .populate("templeDevoteInTouch", "-createdAt -updatedAt")
+    .populate("campaignId", "-createdAt -updatedAt");
+
+  if (!campaginer) {
+    throw new AppError("Campaigner not found", 404);
+  }
+
+  const donationCount = await Donation.countDocuments({
+    campaigner: campaignerId,
+    status: "success",
+  });
+
+  return {
+    status: 200,
+    message: "Campaigner details fetched",
+    campaginerWithImage: campaginer,
+    count: donationCount,
+  };
+};
+
+export const getTopDonorsService = async (req) => {
+  const { campaignId } = req.params;
+
+  if (!campaignId) {
+    throw new AppError("CampaignId is required", 400);
+  }
+
+  if (!mongoose.isValidObjectId(campaignId)) {
+    throw new AppError(`Invalid campaginId: ${campaignId}`);
+  }
+
+  const campaign = await Campaign.findOne({
+    _id: campaignId,
+    status: "active",
+  });
+
+  if (!campaign) {
+    throw new AppError("Campaign not found", 404);
+  }
+
+  const topDonors = await Donation.find({
+    campaign: campaignId,
+    status: "success",
+  })
+    .populate("campaign", "-createdAt updatedAt")
+    .populate("campaigner", "-createdAt updatedAt")
+    .select("donorName donorPhone donorEmail amount")
+    .sort({ amount: -1 })
+    .limit(5);
+
+  if (!topDonors.length) {
+    return {
+      status: 200,
+      message: "fetched successfully",
+      topDonors,
+    };
+  }
+
+  return {
+    status: 200,
+    message: `top ${topDonors.length} donars fetched successfully`,
+    topDonors,
+  };
+};
+
+export const getLastestDonorofCampaignerService = async (req) => {
+  const { campaignId, campaignerId } = req.params;
+
+  if (!campaignId) {
+    throw new AppError(`CampaginId is required`, 400);
+  }
+
+  if (!campaignerId) {
+    throw new AppError(`CampaginerId is required`, 400);
+  }
+
+  if (!mongoose.isValidObjectId(campaignId)) {
+    throw new AppError(`Invalid CampaignId: ${campaignId}`, 400);
+  }
+  if (!mongoose.isValidObjectId(campaignerId)) {
+    throw new AppError(`Invalid CampaignerId: ${campaignerId}`, 400);
+  }
+
+  const campaign = await Campaign.findOne({
+    _id: campaignId,
+    status: "active",
+  });
+
+  if (!campaign) {
+    throw new AppError("Campaign not found", 404);
+  }
+
+  const campaigner = await Campaigner.findOne({
+    _id: campaignerId,
+    campaignId,
+  });
+
+  if (!campaigner) {
+    throw new AppError("Campaigner not found", 400);
+  }
+
+  const donations = await Donation.find({
+    campaign: campaignId,
+    campaigner: campaignerId,
+    status: "success",
+  })
+    .sort({ createdAt: -1 })
+    .limit(10)
+    .select("donorName donorPhone donorEmail amount");
+
+  return {
+    status: 200,
+    message: `Fetched latest ${donations.length} donors`,
+    donations,
   };
 };

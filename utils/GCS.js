@@ -2,7 +2,9 @@ import { bucket } from "../config/GCS.config.js";
 
 export const uploadToGCS = (file) => {
   return new Promise((resolve, reject) => {
-    const filename = `${Date.now()}-${file.originalname}`;
+    const filename = `${Date.now()}-${file.originalname
+      .replace(/\s+/g, "-")
+      .replace(/[^a-zA-Z0-9.-]/g, "")}`;
     const blob = bucket.file(filename);
 
     const stream = blob.createWriteStream({
@@ -11,8 +13,14 @@ export const uploadToGCS = (file) => {
     });
 
     stream.on("error", reject);
-    stream.on("finish", async () => {
-      resolve({ filename });
+
+    stream.on("finish", () => {
+      const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filename}`;
+
+      resolve({
+        filename,
+        url: publicUrl,
+      });
     });
 
     stream.end(file.buffer);

@@ -12,7 +12,6 @@ const campaignSchema = new mongoose.Schema(
       required: true,
       min: 1,
     },
-
     raisedAmount: {
       type: Number,
       default: 0,
