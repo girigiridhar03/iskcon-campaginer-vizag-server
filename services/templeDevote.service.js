@@ -23,3 +23,13 @@ export const createTempleDevoteService = async (req) => {
     newDevote,
   };
 };
+
+export const getTempleDevotesService = async () => {
+  const devotes = await TempleDevote.find({}).select("-createdAt -updatedAt");
+
+  return {
+    status: 200,
+    message: "Fetched Devotes list",
+    devotes,
+  };
+};
