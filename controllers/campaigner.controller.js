@@ -15,10 +15,10 @@ export const createCampaigner = asyncHandlers(async (req, res) => {
 });
 
 export const getCampaigners = asyncHandlers(async (req, res) => {
-  const { status, message, campaigners, count } =
+  const { status, message, campaigners, count, totalPages } =
     await getCampaignerService(req);
 
-  response(res, status, message, { campaigners, count });
+  response(res, status, message, { campaigners, count, totalPages });
 });
 
 export const getSingleCampaigner = asyncHandlers(async (req, res) => {

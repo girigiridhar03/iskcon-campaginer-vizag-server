@@ -1,7 +1,7 @@
 import Media from "../models/media.model.js";
 
 export const getMediaListService = async () => {
-  const mediaList = await Media.find({}).select("-_id -createdAt -updatedAt");
+  const mediaList = await Media.find({}).select("-createdAt -updatedAt");
 
   return {
     status: 200,

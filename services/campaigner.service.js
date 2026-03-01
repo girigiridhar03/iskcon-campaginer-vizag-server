@@ -137,6 +137,9 @@ export const getCampaignerService = async (req) => {
   const pageSize = parseInt(req.query.pageSize) || 12;
   const skip = (page - 1) * pageSize;
   const status = req.query.status;
+  const search = req.query.search;
+  const sort = req.query.sort;
+  let sortOptions = { raisedAmount: -1 };
 
   if (!campId) {
     throw new AppError("CampaignId is required", 400);
@@ -154,37 +157,64 @@ export const getCampaignerService = async (req) => {
   if (!campaign) {
     throw new AppError(`Campaign not found`, 404);
   }
-
-  const obj = {
+  const options = {
     campaignId: campId,
-    status: "active",
+    status,
   };
 
-  if (req.query.search) {
-    obj.name = {
-      $regex: req.query.search,
-      $options: "i",
-    };
+  if (search) {
+    options.$or = [
+      { name: { $regex: search, $options: "i" } },
+      { phoneNumber: { $regex: search } },
+    ];
   }
 
-  const campaigners = await Campaigner.find(obj)
+  if (sort === "raised_asc") {
+    sortOptions = { raisedAmount: 1 };
+  } else if (sort === "raised_desc") {
+    sortOptions = { raisedAmount: -1 };
+  } else if (sort === "target_asc") {
+    sortOptions = { targetAmount: 1 };
+  } else if (sort === "target_desc") {
+    sortOptions = { targetAmount: -1 };
+  }
+
+  const campaigners = await Campaigner.find(options)
     .populate("templeDevoteInTouch", "-createdAt -updatedAt")
     .populate("campaignId", "-createdAt -updatedAt")
-    .sort({ raisedAmount: -1 })
+    .sort(sortOptions)
     .skip(skip)
     .limit(pageSize)
     .select("-createdAt -updatedAt");
+
+  const campaignersWithFundersCount = await Promise.all(
+    campaigners.map(async (item) => {
+      const funderCount = await Donation.countDocuments({
+        campaign: campId,
+        campaigner: item._id,
+        status: "success",
+      });
+
+      return {
+        ...item.toObject(),
+        funderCount,
+      };
+    }),
+  );
 
   const totalCampaigners = await Campaigner.countDocuments({
     campaignId: campId,
     status: "active",
   });
 
+  const totalPages = Math.ceil(totalCampaigners / pageSize);
+
   return {
     status: 200,
     message: "Fetched campaigners successfully.",
-    campaigners: campaigners,
+    campaigners: campaignersWithFundersCount,
     count: totalCampaigners,
+    totalPages,
   };
 };
 
