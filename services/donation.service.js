@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { AppError } from "../utils/AppError.js";
 import Donation from "../models/donation.model.js";
-import razorypay from "../config/razorypay.js";
+import razorpay from "../config/razorpay.js";
 import Payment from "../models/payment.model.js";
 import Campaign from "../models/campaign.model.js";
 import Campaigner from "../models/campaigner.model.js";
@@ -78,10 +78,13 @@ export const createDonationOrderService = async (req) => {
     pan,
   });
 
-  const order = await razorypay.orders.create({
+  const order = await razorpay.orders.create({
     amount: amount * 100,
     currency: "INR",
     receipt: createDonation._id.toString(),
+    notes: {
+      donationId: createDonation._id.toString(),
+    },
   });
 
   await Payment.create({

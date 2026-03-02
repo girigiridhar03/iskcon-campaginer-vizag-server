@@ -202,10 +202,7 @@ export const getCampaignerService = async (req) => {
     }),
   );
 
-  const totalCampaigners = await Campaigner.countDocuments({
-    campaignId: campId,
-    status: "active",
-  });
+  const totalCampaigners = await Campaigner.countDocuments(options);
 
   const totalPages = Math.ceil(totalCampaigners / pageSize);
 

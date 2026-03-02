@@ -20,67 +20,60 @@ export const razorpayWebhookService = async (req, res) => {
     }
 
     const event = JSON.parse(req.body.toString());
+
     if (event.event === "payment.captured") {
       const payment = event.payload.payment.entity;
+      const donationId = payment.notes.donationId;
 
-      const existingPayment = await Payment.findOne({
-        gatewayPaymentId: payment.id,
+      const paymentDoc = await Payment.findOne({
+        gatewayOrderId: payment.order_id,
       });
 
-      if (existingPayment) {
+      if (!paymentDoc) return res.json({ status: "payment_not_found" });
+
+      if (paymentDoc.status === "captured") {
         return res.json({ status: "already_processed" });
       }
 
-      await Payment.findOneAndUpdate(
-        { gatewayOrderId: payment.order_id },
-        {
-          gatewayPaymentId: payment.id,
-          status: "captured",
-          rawResponse: payment,
-        },
+      paymentDoc.gatewayPaymentId = payment.id;
+      paymentDoc.status = "captured";
+      paymentDoc.rawResponse = payment;
+      await paymentDoc.save();
+
+      const updatedDonation = await Donation.findOneAndUpdate(
+        { _id: donationId, status: { $ne: "success" } },
+        { status: "success" },
         { returnDocument: "after" },
       );
 
-      const donation = await Donation.findById(payment.notes.donationId);
+      if (updatedDonation) {
+        if (updatedDonation.campaign) {
+          await Campaign.findByIdAndUpdate(updatedDonation.campaign, {
+            $inc: { raisedAmount: updatedDonation.amount },
+          });
+        }
 
-      if (!donation) {
-        console.warn("Donation not found:", payment.order_id);
-        return res.json({ status: "donation_not_found" });
-      }
-
-      if (donation.status === "success") {
-        return res.json({ status: "already_processed" });
-      }
-
-      donation.status = "success";
-      await donation.save();
-
-      if (donation.campaign) {
-        await Campaign.findByIdAndUpdate(donation.campaign, {
-          $inc: { raisedAmount: donation.amount },
-        });
-      }
-
-      if (donation.campaigner) {
-        await Campaigner.findByIdAndUpdate(donation.campaigner, {
-          $inc: { raisedAmount: donation.amount },
-        });
+        if (updatedDonation.campaigner) {
+          await Campaigner.findByIdAndUpdate(updatedDonation.campaigner, {
+            $inc: { raisedAmount: updatedDonation.amount },
+          });
+        }
       }
     }
+
     if (event.event === "payment.failed") {
       const payment = event.payload.payment.entity;
+      const donationId = payment.notes.donationId;
 
       await Payment.findOneAndUpdate(
         { gatewayOrderId: payment.order_id },
-        {
-          status: "failed",
-          rawResponse: payment,
-        },
+        { status: "failed", rawResponse: payment },
       );
 
-      await Donation.findByIdAndUpdate(payment.order_id, {
-        status: "failed",
-      });
+      await Donation.findOneAndUpdate(
+        { _id: donationId, status: { $ne: "success" } },
+        { status: "failed" },
+      );
     }
 
     return res.json({ status: "ok" });

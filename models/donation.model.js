@@ -37,6 +37,10 @@ const donationSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    seva: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Seva",
+    },
     pan: {
       type: String,
       uppercase: true,
