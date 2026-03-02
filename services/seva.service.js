@@ -72,3 +72,52 @@ export const getSingleSevaService = async (req) => {
     seva,
   };
 };
+
+export const deleteSevaService = async (req) => {
+  const sevaId = req.params.sevaId;
+
+  if (!sevaId) {
+    throw new AppError(`SevaId is required`, 400);
+  }
+
+  if (!mongoose.isValidObjectId(sevaId)) {
+    throw new AppError(`Invalid SevaId: ${sevaId}`);
+  }
+
+  const deletedSeva = await Seva.findByIdAndDelete(sevaId);
+
+  if (!deletedSeva) {
+    throw new AppError("Seva not found", 404);
+  }
+
+  return {
+    success: true,
+    message: "Seva deleted successfully",
+    data: deletedSeva,
+  };
+};
+
+export const updateSevaService = async (req) => {
+  const sevaId = req.params.sevaId;
+  const { sevaName, sevaPoints, sevaAmount } = req.body;
+
+  if (!sevaId) {
+    throw new AppError(`SevaId is required`, 400);
+  }
+
+  if (!mongoose.isValidObjectId(sevaId)) {
+    throw new AppError(`Invalid SevaId: ${sevaId}`);
+  }
+
+  const updatedSeva = await Seva.findByIdAndUpdate(
+    sevaId,
+    { sevaName, sevaAmount, sevaPoints },
+    { returnDocument: "after", runValidators: true },
+  );
+
+  return {
+    success: true,
+    message: "Seva updated successfully",
+    data: updatedSeva,
+  };
+};

@@ -271,11 +271,9 @@ export const getTopDonorsService = async (req) => {
     campaign: campaignId,
     status: "success",
   })
-    .populate("campaign", "-createdAt updatedAt")
-    .populate("campaigner", "-createdAt updatedAt")
-    .select("donorName donorPhone donorEmail amount")
     .sort({ amount: -1 })
-    .limit(5);
+    .limit(5)
+    .select("donorName donorPhone donorEmail amount createdAt");
 
   if (!topDonors.length) {
     return {
@@ -335,7 +333,7 @@ export const getLastestDonorofCampaignerService = async (req) => {
   })
     .sort({ createdAt: -1 })
     .limit(10)
-    .select("donorName donorPhone donorEmail amount");
+    .select("donorName donorPhone donorEmail amount createdAt");
 
   return {
     status: 200,
