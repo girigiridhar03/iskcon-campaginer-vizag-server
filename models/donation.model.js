@@ -37,6 +37,12 @@ const donationSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    address: {
+      type: String,
+    },
+    pincode: {
+      type: String,
+    },
     seva: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Seva",

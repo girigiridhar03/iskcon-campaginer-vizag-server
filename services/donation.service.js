@@ -16,6 +16,9 @@ export const createDonationOrderService = async (req) => {
     email,
     isAnonymous,
     pan,
+    sevaId,
+    address,
+    pincode,
   } = req.body;
 
   const requiredFields = [
@@ -43,12 +46,18 @@ export const createDonationOrderService = async (req) => {
     throw new AppError(`Invalid campaignerId: ${campaignerId}`, 400);
   }
 
-  if (isNaN(amount)) {
+  if (isNaN(Number(amount))) {
     throw new AppError("Amount need be a number", 400);
   }
 
   if (Number(amount) <= 0) {
     throw new AppError("Amount need to be greater than 0", 400);
+  }
+
+  if (sevaId) {
+    if (!mongoose.isValidObjectId(sevaId)) {
+      throw new AppError(`Invalid SevaID: ${sevaId}`);
+    }
   }
 
   const isExistCampaign = await Campaign.findOne({
@@ -69,13 +78,16 @@ export const createDonationOrderService = async (req) => {
   const createDonation = await Donation.create({
     donorName: isAnonymous ? "Devote" : donorName,
     donorPhone,
-    amount,
+    amount: Number(amount),
     donorEmail: email,
     isAnonymous,
     campaign: campaignId,
     campaigner: campaignerId,
     status: "pending",
+    seva: sevaId,
     pan,
+    pincode,
+    address,
   });
 
   const order = await razorpay.orders.create({
