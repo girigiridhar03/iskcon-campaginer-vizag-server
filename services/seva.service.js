@@ -58,7 +58,7 @@ export const deleteSevaService = async (req) => {
   }
 
   if (!mongoose.isValidObjectId(sevaId)) {
-    throw new AppError(`Invalid SevaId: ${sevaId}`);
+    throw new AppError(`Invalid SevaId: ${sevaId}`, 400);
   }
 
   const deletedSeva = await Seva.findByIdAndDelete(sevaId);
@@ -83,7 +83,7 @@ export const updateSevaService = async (req) => {
   }
 
   if (!mongoose.isValidObjectId(sevaId)) {
-    throw new AppError(`Invalid SevaId: ${sevaId}`);
+    throw new AppError(`Invalid SevaId: ${sevaId}`, 400);
   }
 
   const updatedSeva = await Seva.findByIdAndUpdate(

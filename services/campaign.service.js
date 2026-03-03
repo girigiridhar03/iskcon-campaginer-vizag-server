@@ -79,3 +79,50 @@ export const getCurrentCampaignService = async (req) => {
     campaign,
   };
 };
+
+export const getCampaginListService = async (req) => {
+  const { search, sort, status } = req.query;
+  const sortOption = { createdAt: -1 };
+  const page = parseInt(req.query.page) || 1;
+  const pageSize = parseInt(req.query.pageSize) || 100;
+  const skip = (page - 1) * pageSize;
+
+  let filters = {};
+
+  if (search?.trim()) {
+    filters.title = { $regex: search, $options: "i" };
+  }
+
+  if (sort === "target_desc") {
+    sortOption = { targetAmount: -1 };
+  } else if (sort === "target_asc") {
+    sortOption = { targetAmount: 1 };
+  } else if (sort === "raised_desc") {
+    sortOption = { raisedAmount: -1 };
+  } else if (sort === "raised_asc") {
+    sortOption = { raisedAmount: 1 };
+  }
+
+  if (status) {
+    filters.status = status;
+  }
+
+  const [campagins, total] = await Promise.all([
+    Campaign.find(filters)
+      .sort(sortOption)
+      .skip(skip)
+      .limit(pageSize)
+      .select("-updatedAt"),
+    Campaign.countDocuments(filters),
+  ]);
+
+  const totalPages = Math.ceil(total / pageSize);
+
+  return {
+    status: 200,
+    message: "campagins fetched successfully",
+    data: campagins,
+    total,
+    totalPages,
+  };
+};

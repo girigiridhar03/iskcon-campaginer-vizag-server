@@ -56,7 +56,7 @@ export const createDonationOrderService = async (req) => {
 
   if (sevaId) {
     if (!mongoose.isValidObjectId(sevaId)) {
-      throw new AppError(`Invalid SevaID: ${sevaId}`);
+      throw new AppError(`Invalid SevaID: ${sevaId}`, 400);
     }
   }
 
@@ -130,7 +130,7 @@ export const getDonorsService = async (req) => {
 
   if (id) {
     if (!mongoose.isValidObjectId(id)) {
-      throw new AppError(`Invalid Id: ${id}`);
+      throw new AppError(`Invalid Id: ${id}`, 400);
     }
 
     filter.campaigner = id;
@@ -138,7 +138,7 @@ export const getDonorsService = async (req) => {
 
   if (campId) {
     if (!mongoose.isValidObjectId(campId)) {
-      throw new AppError(`Invalid Id: ${campId}`);
+      throw new AppError(`Invalid Id: ${campId}`, 400);
     }
 
     filter.campaign = campId;

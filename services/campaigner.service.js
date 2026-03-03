@@ -146,7 +146,7 @@ export const getCampaignerService = async (req) => {
   }
 
   if (!mongoose.isValidObjectId(campId)) {
-    throw new AppError(`Invalid campaginId: ${campId}`);
+    throw new AppError(`Invalid campaginId: ${campId}`, 400);
   }
 
   const campaign = await Campaign.findOne({
@@ -255,7 +255,7 @@ export const getTopDonorsService = async (req) => {
   }
 
   if (!mongoose.isValidObjectId(campaignId)) {
-    throw new AppError(`Invalid campaginId: ${campaignId}`);
+    throw new AppError(`Invalid campaginId: ${campaignId}`,400);
   }
 
   const campaign = await Campaign.findOne({
