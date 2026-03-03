@@ -1,8 +1,8 @@
 import {
   addSevaService,
   deleteSevaService,
+  getSelectedSevaDetailsService,
   getSevaService,
-  getSingleSevaService,
   updateSevaService,
 } from "../services/seva.service.js";
 import { asyncHandlers } from "../utils/handlers.js";
@@ -20,12 +20,6 @@ export const getSeva = asyncHandlers(async (_, res) => {
   response(res, status, message, sevas);
 });
 
-export const getSingleSeva = asyncHandlers(async (req, res) => {
-  const { status, message, seva } = await getSingleSevaService(req);
-
-  response(res, status, message, seva);
-});
-
 export const deleteSeva = asyncHandlers(async (req, res) => {
   const { status, message, data } = await deleteSevaService(req);
 
@@ -34,6 +28,12 @@ export const deleteSeva = asyncHandlers(async (req, res) => {
 
 export const updateSeva = asyncHandlers(async (req, res) => {
   const { status, message, data } = await updateSevaService(req);
+
+  response(res, status, message, data);
+});
+
+export const getSelectedSevaDetails = asyncHandlers(async (req, res) => {
+  const { status, message, data } = await getSelectedSevaDetailsService(req);
 
   response(res, status, message, data);
 });

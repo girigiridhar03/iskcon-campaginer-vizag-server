@@ -50,29 +50,6 @@ export const getSevaService = async () => {
   };
 };
 
-export const getSingleSevaService = async (req) => {
-  const sevaId = req.body;
-  if (!sevaId) {
-    throw new AppError("SevaId is required", 400);
-  }
-
-  if (!mongoose.isValidObjectId(sevaId)) {
-    throw new AppError(`Invalid SevaId: ${sevaId}`, 400);
-  }
-
-  const seva = await Seva.findById(sevaId).select("-createdAt -updatedAt");
-
-  if (!seva) {
-    throw new AppError("Seva not found", 404);
-  }
-
-  return {
-    status: 200,
-    message: "Fetched Single Seva Details",
-    seva,
-  };
-};
-
 export const deleteSevaService = async (req) => {
   const sevaId = req.params.sevaId;
 
@@ -91,7 +68,7 @@ export const deleteSevaService = async (req) => {
   }
 
   return {
-    success: true,
+    status: 200,
     message: "Seva deleted successfully",
     data: deletedSeva,
   };
@@ -116,8 +93,34 @@ export const updateSevaService = async (req) => {
   );
 
   return {
-    success: true,
+    status: 200,
     message: "Seva updated successfully",
     data: updatedSeva,
+  };
+};
+
+export const getSelectedSevaDetailsService = async (req) => {
+  const sevaId = req.params.sevaId;
+
+  if (!sevaId) {
+    throw new AppError("SevaId is required", 400);
+  }
+
+  if (!mongoose.isValidObjectId(sevaId)) {
+    throw new AppError(`Invalid SevaId: ${sevaId}`, 400);
+  }
+
+  const singleSeva = await Seva.findById(sevaId).select(
+    "-createdAt -updatedAt",
+  );
+
+  if (!singleSeva) {
+    throw new AppError(`Seva not found`, 404);
+  }
+
+  return {
+    status: 200,
+    message: "Single Details fetched successfully",
+    data: singleSeva,
   };
 };
