@@ -120,7 +120,7 @@ export const createDonationOrderService = async (req) => {
 };
 
 export const getDonorsService = async (req) => {
-  const { id, campId, search } = req.query;
+  const { id, campId, search, sevaId } = req.query;
   const page = parseInt(req.query.page) || 1;
   const pageSize = parseInt(req.query.pageSize) || 15;
 
@@ -152,6 +152,10 @@ export const getDonorsService = async (req) => {
       { donorPhone: searchRegex },
       { receiptNumber: searchRegex },
     ];
+  }
+
+  if (sevaId) {
+    filter.seva = sevaId;
   }
 
   const skip = (page - 1) * pageSize;
@@ -186,3 +190,4 @@ export const getDonorsService = async (req) => {
     },
   };
 };
+  
