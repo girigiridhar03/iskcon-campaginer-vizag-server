@@ -1,6 +1,7 @@
 import Register from "../models/register.modal.js";
 import { AppError } from "../utils/AppError.js";
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 export const registerService = async (req) => {
   const { name, email, password } = req.body;
@@ -33,9 +34,23 @@ export const registerService = async (req) => {
     role: "admin",
   });
 
+  const token = jwt.sign(
+    {
+      id: newRegister._id,
+      name: newRegister.name,
+      email: newRegister.email,
+      role: newRegister.role,
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: "7d",
+    },
+  );
+
   return {
     status: 201,
     message: "Registered Successfully",
     newRegister,
+    token,
   };
 };

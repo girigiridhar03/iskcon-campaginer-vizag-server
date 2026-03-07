@@ -117,7 +117,7 @@ export const createCampaignerService = async (req) => {
     campaignId,
     templeDevoteInTouch,
     targetAmount,
-    status: "active",
+    status: req?.campaignerStatus,
     image: {
       filename: imageResult?.filename,
       url: imageResult?.url,
@@ -126,7 +126,10 @@ export const createCampaignerService = async (req) => {
 
   return {
     status: 201,
-    message: "campaigner created successfully",
+    message:
+      req?.campaignerStatus === "active"
+        ? "Campaigner created successfully"
+        : "Campaigner registration pending admin approval",
     newCampaigner,
   };
 };
@@ -255,7 +258,7 @@ export const getTopDonorsService = async (req) => {
   }
 
   if (!mongoose.isValidObjectId(campaignId)) {
-    throw new AppError(`Invalid campaginId: ${campaignId}`,400);
+    throw new AppError(`Invalid campaginId: ${campaignId}`, 400);
   }
 
   const campaign = await Campaign.findOne({
