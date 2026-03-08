@@ -11,7 +11,10 @@ const noCache = (req, res, next) => {
   next();
 };
 const app = express();
-const allowedOrigin = ["http://localhost:5173"];
+const allowedOrigin = [
+  "http://localhost:5173",
+  "https://iskcon-campaginer-vizag-client.vercel.app",
+];
 import webhookRouter from "./routes/webhook.route.js";
 app.use(
   "/api/webhooks",
