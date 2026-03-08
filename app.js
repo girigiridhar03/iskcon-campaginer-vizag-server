@@ -24,19 +24,14 @@ app.use(
 app.use(noCache);
 
 app.use(express.json());
+
 app.use(
   cors({
-    origin: function (origin, cb) {
-      if (!origin || allowedOrigin.includes(origin)) {
-        cb(null, true);
-      } else {
-        cb(new Error("Not allowed by cors"));
-      }
-    },
+    origin: allowedOrigin,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    credentials: true,
   }),
 );
-
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
