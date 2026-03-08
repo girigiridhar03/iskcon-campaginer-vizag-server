@@ -5,12 +5,14 @@ dotenv.config();
 
 const port = process.env.PORT || 8080;
 
+app.listen(port, "0.0.0.0", () => {
+  console.log(`Server running on port ${port}`);
+});
+
 connectToDB()
   .then(() => {
-    app.listen(port, "0.0.0.0", () => {
-      console.log(`Port is connected to ${port}`);
-    });
+    console.log("DB connected successfully");
   })
   .catch((error) => {
-    console.log(`DB connection failed: ${error}`);
+    console.error("DB connection failed:", error);
   });
