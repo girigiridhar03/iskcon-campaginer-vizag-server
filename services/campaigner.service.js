@@ -349,3 +349,75 @@ export const getLastestDonorofCampaignerService = async (req) => {
     donations,
   };
 };
+
+export const updateCampaignerService = async (req) => {
+  const id = req.params.id;
+
+  if (!id) {
+    throw new AppError("CampaignerId is required", 400);
+  }
+
+  if (!mongoose.isValidObjectId(id)) {
+    throw new AppError(`Invalid Id: ${id}`, 400);
+  }
+
+  const updateData = Object.fromEntries(
+    Object.entries(req.body).filter(([_, value]) => value !== undefined),
+  );
+  delete updateData.raisedAmount;
+  delete updateData.campaignId;
+  if (Object.keys(updateData).length === 0) {
+    throw new AppError("No fields provided for update", 400);
+  }
+
+  const updatedCampaigner = await Campaigner.findByIdAndUpdate(
+    id,
+    { $set: updateData },
+    {
+      returnDocument: "after",
+      runValidators: true,
+    },
+  );
+
+  if (!updatedCampaigner) {
+    throw new AppError("Campaigner not found", 404);
+  }
+
+  return {
+    status: 200,
+    message: "Updated successfully",
+    data: updatedCampaigner,
+  };
+};
+
+export const deleteCampaignerService = async (req) => {
+  const id = req.params.id;
+
+  if (!id) {
+    throw new AppError("CampaignerId is required", 400);
+  }
+
+  if (!mongoose.isValidObjectId(id)) {
+    throw new AppError(`Invalid Id: ${id}`, 400);
+  }
+
+  const campaigner = await Campaigner.findById(id);
+
+  if (!campaigner) {
+    throw new AppError(`Campaigner not found`, 404);
+  }
+
+  if (campaigner.raisedAmount > 0) {
+    throw new AppError(
+      "Campaigner cannot be deleted after receiving donations",
+      400,
+    );
+  }
+  await campaigner.deleteOne();
+
+  return {
+    status: 200,
+    message: "campaigner deleted successfully",
+    data: campaigner,
+  };
+};

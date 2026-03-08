@@ -1,10 +1,12 @@
 import express from "express";
 import {
   createCampaigner,
+  deleteCampaigner,
   getCampaigners,
   getLastestDonorofCampaigner,
   getSingleCampaigner,
   getTopDonors,
+  updateCampaigner,
 } from "../controllers/campaigner.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { optionalAuth } from "../middlewares/verifyToken.middleware.js";
@@ -28,5 +30,6 @@ campaignerRouter.get(
 );
 campaignerRouter.get("/details/:campaignerId/", getSingleCampaigner);
 campaignerRouter.get("/:campaignId", getCampaigners);
-
+campaignerRouter.put("/:id", updateCampaigner);
+campaignerRouter.delete("/:id", deleteCampaigner);
 export default campaignerRouter;
