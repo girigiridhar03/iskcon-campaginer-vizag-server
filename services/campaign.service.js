@@ -82,7 +82,7 @@ export const getCurrentCampaignService = async (req) => {
 
 export const getCampaginListService = async (req) => {
   const { search, sort, status } = req.query;
-  const sortOption = { createdAt: -1 };
+  let sortOption = { createdAt: -1 };
   const page = parseInt(req.query.page) || 1;
   const pageSize = parseInt(req.query.pageSize) || 100;
   const skip = (page - 1) * pageSize;
