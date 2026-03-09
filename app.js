@@ -45,6 +45,7 @@ import mediaRouter from "./routes/media.routes.js";
 import paymentRouter from "./routes/payment.route.js";
 import sevaRouter from "./routes/seva.route.js";
 import dashboardRouter from "./routes/dashboard.route.js";
+import recieptRouter from "./routes/receipt.route.js";
 
 app.use("/api", registerRouter);
 app.use("/api/campaign", campaignRouter);
@@ -55,9 +56,9 @@ app.use("/api/media", mediaRouter);
 app.use("/api/payment", paymentRouter);
 app.use("/api/seva", sevaRouter);
 app.use("/api/dashboard", dashboardRouter);
+app.use("/api/receipt", recieptRouter);
 
 import { errorHandler } from "./utils/handlers.js";
-
 app.use(errorHandler);
 
 export default app;
