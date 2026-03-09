@@ -34,12 +34,42 @@ export const registerService = async (req) => {
     role: "admin",
   });
 
+  return {
+    status: 201,
+    message: "Registered Successfully",
+    newRegister,
+  };
+};
+
+export const loginService = async (req) => {
+  const { email, password } = req.body;
+
+  if (!email?.trim()) {
+    throw new AppError("Email is required", 400);
+  }
+
+  if (!password?.trim()) {
+    throw new AppError("Password is required", 400);
+  }
+
+  const existingUser = await Register.findOne({ email });
+
+  if (!existingUser) {
+    throw new AppError(`Invalid credentials`, 401);
+  }
+
+  const isPassword = await bcrypt.compare(password, existingUser.password);
+
+  if (!isPassword) {
+    throw new AppError(`Invalid credentials`, 401);
+  }
+
   const token = jwt.sign(
     {
-      id: newRegister._id,
-      name: newRegister.name,
-      email: newRegister.email,
-      role: newRegister.role,
+      id: existingUser._id,
+      name: existingUser.name,
+      email: existingUser.email,
+      role: existingUser.role,
     },
     process.env.JWT_SECRET,
     {
@@ -48,9 +78,26 @@ export const registerService = async (req) => {
   );
 
   return {
-    status: 201,
-    message: "Registered Successfully",
-    newRegister,
-    token,
+    status: 200,
+    message: "Login successfully",
+    data: token,
+  };
+};
+
+export const getAdminDetailsService = async (req) => {
+  const user = req.user;
+
+  const details = await Register.findById(user.id).select(
+    "-createdAt -updatedAt -password",
+  );
+
+  if (!details) {
+    throw new AppError("Not found", 404);
+  }
+
+  return {
+    status: 200,
+    message: "details fetched successfully",
+    data: details,
   };
 };

@@ -9,7 +9,10 @@ import {
   updateCampaigner,
 } from "../controllers/campaigner.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
-import { optionalAuth } from "../middlewares/verifyToken.middleware.js";
+import {
+  optionalAuth,
+  verifyToken,
+} from "../middlewares/verifyToken.middleware.js";
 import { campaignerStatus } from "../middlewares/campaignerStatus.middleware.js";
 
 const campaignerRouter = express.Router();
@@ -30,6 +33,6 @@ campaignerRouter.get(
 );
 campaignerRouter.get("/details/:campaignerId/", getSingleCampaigner);
 campaignerRouter.get("/:campaignId", getCampaigners);
-campaignerRouter.put("/:id", updateCampaigner);
-campaignerRouter.delete("/:id", deleteCampaigner);
+campaignerRouter.put("/:id", verifyToken, updateCampaigner);
+campaignerRouter.delete("/:id", verifyToken, deleteCampaigner);
 export default campaignerRouter;

@@ -5,6 +5,8 @@ export const verifyToken = (req, res, next) => {
 
   if (!authHeader) {
     return res.status(401).json({
+      status: 401,
+      success: false,
       message: "Access denied. No token provided",
     });
   }
@@ -19,6 +21,8 @@ export const verifyToken = (req, res, next) => {
     next();
   } catch (error) {
     return res.status(401).json({
+      status: 401,
+      success: false,
       message: "Invalid or expired token",
     });
   }
@@ -36,7 +40,7 @@ export const optionalAuth = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; // admin
+    req.user = decoded;
   } catch {
     req.user = null;
   }

@@ -6,13 +6,14 @@ import {
   getSeva,
   updateSeva,
 } from "../controllers/seva.controller.js";
+import { verifyToken } from "../middlewares/verifyToken.middleware.js";
 
 const sevaRouter = express.Router();
 
-sevaRouter.post("/add", addSeva);
+sevaRouter.post("/add", verifyToken, addSeva);
 sevaRouter.get("/", getSeva);
 sevaRouter.get("/:sevaId", getSelectedSevaDetails);
-sevaRouter.delete("/:sevaId", deleteSeva);
-sevaRouter.put("/:sevaId", updateSeva);
+sevaRouter.delete("/:sevaId", verifyToken, deleteSeva);
+sevaRouter.put("/:sevaId", verifyToken, updateSeva);
 
 export default sevaRouter;

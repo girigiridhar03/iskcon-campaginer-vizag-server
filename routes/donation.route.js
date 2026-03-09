@@ -4,11 +4,12 @@ import {
   getDonorDetails,
   getDonors,
 } from "../controllers/donation.controller.js";
+import { verifyToken } from "../middlewares/verifyToken.middleware.js";
 
 const donationRouter = express.Router();
 
 donationRouter.post("/create-order", createDonationOrder);
-donationRouter.get("/", getDonors);
+donationRouter.get("/", verifyToken, getDonors);
 
 donationRouter.get("/:donationId", getDonorDetails);
 
