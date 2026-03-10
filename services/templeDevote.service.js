@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import TempleDevote from "../models/templeDevote.model.js";
 import { AppError } from "../utils/AppError.js";
 
@@ -24,12 +25,52 @@ export const createTempleDevoteService = async (req) => {
   };
 };
 
-export const getTempleDevotesService = async () => {
-  const devotes = await TempleDevote.find({}).select("-createdAt -updatedAt");
+export const getTempleDevotesService = async (req) => {
+  let filter = {};
+
+  if (req.query.search) {
+    filter.$or = [
+      {
+        devoteName: {
+          $regex: req.query.search,
+          $options: "i",
+        },
+      },
+      { phoneNumber: { $regex: req.query.search } },
+    ];
+  }
+
+  const devotes = await TempleDevote.find(filter)
+    .sort({ devoteName: 1 })
+    .select("-createdAt -updatedAt");
 
   return {
     status: 200,
     message: "Fetched Devotes list",
     devotes,
+  };
+};
+
+export const deleteDevoteService = async (req) => {
+  const id = req.params.id;
+
+  if (!id) {
+    throw new AppError(`id is required`, 400);
+  }
+
+  if (!mongoose.isValidObjectId(id)) {
+    throw new AppError(`Invalid Id: ${id}`, 400);
+  }
+
+  const deletedDevote = await TempleDevote.findByIdAndDelete(id);
+
+  if (!deletedDevote) {
+    throw new AppError("Not Found", 404);
+  }
+
+  return {
+    status: 200,
+    message: "deleted Successfully",
+    data: deletedDevote,
   };
 };

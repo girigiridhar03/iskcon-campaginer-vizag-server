@@ -14,6 +14,7 @@ import {
   verifyToken,
 } from "../middlewares/verifyToken.middleware.js";
 import { campaignerStatus } from "../middlewares/campaignerStatus.middleware.js";
+import { onlyAdmin } from "../middlewares/onlyAdmin.middleware.js";
 
 const campaignerRouter = express.Router();
 
@@ -33,6 +34,6 @@ campaignerRouter.get(
 );
 campaignerRouter.get("/details/:campaignerId/", getSingleCampaigner);
 campaignerRouter.get("/:campaignId", getCampaigners);
-campaignerRouter.put("/:id", verifyToken, updateCampaigner);
-campaignerRouter.delete("/:id", verifyToken, deleteCampaigner);
+campaignerRouter.put("/:id", verifyToken,onlyAdmin, updateCampaigner);
+campaignerRouter.delete("/:id", verifyToken,onlyAdmin, deleteCampaigner);
 export default campaignerRouter;

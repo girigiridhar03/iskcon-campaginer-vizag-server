@@ -1,5 +1,6 @@
 import {
   createTempleDevoteService,
+  deleteDevoteService,
   getTempleDevotesService,
 } from "../services/templeDevote.service.js";
 import { asyncHandlers } from "../utils/handlers.js";
@@ -11,8 +12,13 @@ export const createTempleDevote = asyncHandlers(async (req, res) => {
   response(res, status, message, newDevote);
 });
 
-export const getTempleDevotes = asyncHandlers(async (_, res) => {
-  const { status, message, devotes } = await getTempleDevotesService();
+export const getTempleDevotes = asyncHandlers(async (req, res) => {
+  const { status, message, devotes } = await getTempleDevotesService(req);
 
   response(res, status, message, devotes);
+});
+
+export const deleteDevote = asyncHandlers(async (req, res) => {
+  const { status, message, data } = await deleteDevoteService(req);
+  response(res, status, message, data);
 });
