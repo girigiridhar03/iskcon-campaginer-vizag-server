@@ -12,7 +12,7 @@ export const createDonationOrderService = async (req) => {
     donorPhone,
     amount,
     campaignId,
-    campaignerId,
+    slug,
     email,
     isAnonymous,
     pan,
@@ -26,7 +26,7 @@ export const createDonationOrderService = async (req) => {
     "donorPhone",
     "amount",
     "campaignId",
-    "campaignerId",
+    "slug",
   ];
 
   for (let field of requiredFields) {
@@ -41,9 +41,6 @@ export const createDonationOrderService = async (req) => {
 
   if (!mongoose.isValidObjectId(campaignId)) {
     throw new AppError(`Invalid campaignId: ${campaignId}`, 400);
-  }
-  if (!mongoose.isValidObjectId(campaignerId)) {
-    throw new AppError(`Invalid campaignerId: ${campaignerId}`, 400);
   }
 
   if (isNaN(Number(amount))) {
@@ -77,7 +74,7 @@ export const createDonationOrderService = async (req) => {
     throw new AppError("Campaign not found", 404);
   }
 
-  const isExistCampaigner = await Campaigner.findById(campaignerId);
+  const isExistCampaigner = await Campaigner.findOne({ slug: slug });
 
   if (!isExistCampaigner) {
     throw new AppError("Campaigner not found", 404);
@@ -90,7 +87,7 @@ export const createDonationOrderService = async (req) => {
     donorEmail: email,
     isAnonymous,
     campaign: campaignId,
-    campaigner: campaignerId,
+    campaigner: isExistCampaigner._id,
     status: "pending",
     seva: sevaId,
     pan,

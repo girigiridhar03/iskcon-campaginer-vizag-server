@@ -5,6 +5,10 @@ import Campaigner from "../models/campaigner.model.js";
 import Campaign from "../models/campaign.model.js";
 import { generateReceiptNumber } from "../utils/utils.js";
 import { AppError } from "../utils/AppError.js";
+import path from "path";
+import { generateReceiptBuffer } from "./receipt.service.js";
+import { sendRecieptWhatsapp } from "./whatsapp.service.js";
+import fs from "fs";
 
 export const verifyPaymentService = async (req) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature } =
@@ -62,6 +66,30 @@ export const verifyPaymentService = async (req) => {
       await Campaigner.findByIdAndUpdate(updatedDonation.campaigner, {
         $inc: { raisedAmount: updatedDonation.amount },
       });
+    }
+
+    const tmpDir = path.join(process.cwd(), "tmp");
+
+    fs.mkdirSync(tmpDir, { recursive: true });
+
+    const filePath = path.join(tmpDir, `receipt-${updatedDonation._id}.pdf`);
+    const pdfBytes = await generateReceiptBuffer(updatedDonation._id);
+    fs.writeFileSync(filePath, pdfBytes);
+
+    const phoneNumber = updatedDonation.donorPhone.startsWith("91")
+      ? updatedDonation.donorPhone
+      : `91${updatedDonation.donorPhone}`;
+    try {
+      await sendRecieptWhatsapp(
+        phoneNumber,
+        filePath,
+        updatedDonation.donorName,
+        updatedDonation.amount,
+      );
+    } finally {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
     }
   }
 
