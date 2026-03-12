@@ -21,7 +21,9 @@ const registerSchema = new mongoose.Schema(
     role: {
       type: String,
       required: true,
+      enum: ["admin", "devotee"],
     },
+    isPasswordChanged: { type: Boolean, default: false },
   },
   {
     timestamps: true,

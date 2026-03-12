@@ -1,6 +1,6 @@
 import Register from "../models/register.modal.js";
 import { AppError } from "../utils/AppError.js";
-import bcrypt from "bcrypt";
+import bcrypt, { genSalt } from "bcrypt";
 import jwt from "jsonwebtoken";
 
 export const registerService = async (req) => {
@@ -80,7 +80,53 @@ export const loginService = async (req) => {
   return {
     status: 200,
     message: "Login successfully",
-    data: token,
+    data: {
+      token,
+      name: existingUser.name,
+      role: existingUser.role,
+      isPasswordChanged: existingUser.isPasswordChanged,
+    },
+  };
+};
+
+export const resetPasswordService = async (req) => {
+  const { oldPassword, newPassword } = req.body;
+  const userId = req?.user?.id;
+
+  if (!oldPassword || !oldPassword?.trim()) {
+    throw new AppError("Old password is required", 400);
+  }
+
+  if (!newPassword || !oldPassword?.trim()) {
+    throw new AppError("New Password is required", 400);
+  }
+
+  if (oldPassword === newPassword) {
+    throw new AppError("New password must be different", 400);
+  }
+
+  const user = await Register.findById(userId);
+
+  if (!user) {
+    throw new AppError("Unauthorized", 401);
+  }
+
+  const isPassword = await bcrypt.compare(oldPassword, user.password);
+
+  if (!isPassword) {
+    throw new AppError("Incorrect old password", 400);
+  }
+  const salt = await genSalt(10);
+  const newHashPassword = await bcrypt.hash(newPassword, salt);
+
+  user.password = newHashPassword;
+  user.isPasswordChanged = true;
+
+  await user.save();
+
+  return {
+    status: 200,
+    message: "Password changed successfully",
   };
 };
 

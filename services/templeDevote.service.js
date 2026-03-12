@@ -1,9 +1,12 @@
 import mongoose from "mongoose";
 import TempleDevote from "../models/templeDevote.model.js";
 import { AppError } from "../utils/AppError.js";
+import Register from "../models/register.modal.js";
+import bcrypt from "bcrypt";
+import Campaigner from "../models/campaigner.model.js";
 
 export const createTempleDevoteService = async (req) => {
-  const { name, phoneNumber } = req.body;
+  const { name, phoneNumber, email } = req.body;
 
   if (!name || !name.trim()) {
     throw new AppError(`Devote name is required`, 400);
@@ -13,9 +16,31 @@ export const createTempleDevoteService = async (req) => {
     throw new AppError(`Phone number is required`, 400);
   }
 
+  if (!email || !email.trim()) {
+    throw new AppError(`Devote Mail is required`, 400);
+  }
+
+  const isExist = await TempleDevote.findOne({ email });
+
+  if (isExist) {
+    throw new AppError(`Devote with same mail is already exist`, 400);
+  }
+
+  const salt = await bcrypt.genSalt(10);
+  const hashPassword = await bcrypt.hash(phoneNumber, salt);
+
+  const newRegistration = await Register.create({
+    name,
+    email,
+    password: hashPassword,
+    role: "devotee",
+  });
+
   const newDevote = await TempleDevote.create({
     devoteName: name,
     phoneNumber,
+    email,
+    userId: newRegistration._id,
   });
 
   return {
@@ -60,6 +85,17 @@ export const deleteDevoteService = async (req) => {
 
   if (!mongoose.isValidObjectId(id)) {
     throw new AppError(`Invalid Id: ${id}`, 400);
+  }
+
+  const campaignerExists = await Campaigner.exists({
+    templeDevoteInTouch: id,
+  });
+
+  if (campaignerExists) {
+    throw new AppError(
+      "Cannot delete devotee because campaigners are assigned to this devotee",
+      400,
+    );
   }
 
   const deletedDevote = await TempleDevote.findByIdAndDelete(id);

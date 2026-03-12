@@ -11,7 +11,7 @@ export const cardSummary = asyncHandlers(async (req, res) => {
   response(res, status, message, data);
 });
 
-export const donationTrend = asyncHandlers(async (_, res) => {
-  const { status, message, data } = await donationTrendService();
+export const donationTrend = asyncHandlers(async (req, res) => {
+  const { status, message, data } = await donationTrendService(req);
   response(res, status, message, data);
 });

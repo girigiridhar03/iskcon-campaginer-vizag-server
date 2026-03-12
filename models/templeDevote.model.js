@@ -12,6 +12,16 @@ const templeDevoteSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Register",
+      required: true,
+    },
+    email: {
+      type: String,
+      unique: true,
+      required: true,
+    },
   },
   {
     timestamps: true,

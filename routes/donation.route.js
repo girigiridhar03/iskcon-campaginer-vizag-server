@@ -5,12 +5,17 @@ import {
   getDonors,
 } from "../controllers/donation.controller.js";
 import { verifyToken } from "../middlewares/verifyToken.middleware.js";
-import { onlyAdmin } from "../middlewares/onlyAdmin.middleware.js";
+import { authorizeRole } from "../middlewares/onlyAdmin.middleware.js";
 
 const donationRouter = express.Router();
 
 donationRouter.post("/create-order", createDonationOrder);
-donationRouter.get("/", verifyToken, onlyAdmin, getDonors);
+donationRouter.get(
+  "/",
+  verifyToken,
+  authorizeRole("admin", "devotee"),
+  getDonors,
+);
 
 donationRouter.get("/:donationId", getDonorDetails);
 

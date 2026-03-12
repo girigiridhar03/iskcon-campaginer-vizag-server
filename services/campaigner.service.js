@@ -157,6 +157,8 @@ export const getCampaignerService = async (req) => {
   const search = req.query.search;
   const sort = req.query.sort;
   let sortOptions = { raisedAmount: -1 };
+  const role = req?.user?.role;
+  const userId = req?.user?.id;
 
   if (!campId) {
     throw new AppError("CampaignId is required", 400);
@@ -178,6 +180,17 @@ export const getCampaignerService = async (req) => {
     campaignId: campId,
     status,
   };
+
+  if (role === "devotee") {
+    const devotee = await TempleDevote.findOne({ userId: userId }).select(
+      "_id",
+    );
+    if (!devotee) {
+      throw new AppError("devotee Not Found", 404);
+    }
+
+    options.templeDevoteInTouch = devotee._id;
+  }
 
   if (search) {
     options.$or = [
@@ -242,24 +255,31 @@ export const getSingleCampaignerService = async (req) => {
   if (!slugId) {
     throw new AppError("campaignerId is required", 400);
   }
+  let filter = { slug: slugId };
 
-  const campaginer = await Campaigner.findOne({ slug: slugId })
+  if (mongoose.isValidObjectId(slugId)) {
+    filter = {
+      $or: [{ slug: slugId }, { _id: slugId }],
+    };
+  }
+
+  const campaigner = await Campaigner.findOne(filter)
     .populate("templeDevoteInTouch", "-createdAt -updatedAt")
     .populate("campaignId", "-createdAt -updatedAt");
 
-  if (!campaginer) {
+  if (!campaigner) {
     throw new AppError("Campaigner not found", 404);
   }
 
   const donationCount = await Donation.countDocuments({
-    campaigner: campaginer._id,
+    campaigner: campaigner._id,
     status: "success",
   });
 
   return {
     status: 200,
     message: "Campaigner details fetched",
-    campaginerWithImage: campaginer,
+    campaginerWithImage: campaigner,
     count: donationCount,
   };
 };
@@ -372,6 +392,25 @@ export const updateCampaignerService = async (req) => {
   );
   delete updateData.raisedAmount;
   delete updateData.campaignId;
+  if (updateData.name) {
+    const slug = slugify(updateData.name, {
+      lower: true,
+      strict: true,
+      trim: true,
+    });
+
+    const existingSlug = await Campaigner.exists({
+      slug,
+      _id: { $ne: id },
+    });
+
+    if (existingSlug) {
+      throw new AppError("Campaigner with this name already exists", 400);
+    }
+
+    updateData.slug = slug;
+  }
+
   if (Object.keys(updateData).length === 0) {
     throw new AppError("No fields provided for update", 400);
   }

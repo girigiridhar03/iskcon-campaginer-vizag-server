@@ -2,6 +2,7 @@ import {
   getAdminDetailsService,
   loginService,
   registerService,
+  resetPasswordService,
 } from "../services/register.service.js";
 import { asyncHandlers } from "../utils/handlers.js";
 import { response } from "../utils/response.js";
@@ -20,4 +21,9 @@ export const login = asyncHandlers(async (req, res) => {
 export const getAdminDetails = asyncHandlers(async (req, res) => {
   const { status, message, data } = await getAdminDetailsService(req);
   response(res, status, message, data);
+});
+
+export const resetPassword = asyncHandlers(async (req, res) => {
+  const { status, message } = await resetPasswordService(req);
+  response(res, status, message);
 });

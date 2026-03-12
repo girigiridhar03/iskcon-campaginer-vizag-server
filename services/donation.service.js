@@ -5,6 +5,7 @@ import razorpay from "../config/razorpay.js";
 import Payment from "../models/payment.model.js";
 import Campaign from "../models/campaign.model.js";
 import Campaigner from "../models/campaigner.model.js";
+import TempleDevote from "../models/templeDevote.model.js";
 
 export const createDonationOrderService = async (req) => {
   const {
@@ -129,16 +130,58 @@ export const getDonorsService = async (req) => {
   const page = parseInt(req.query.page) || 1;
   const pageSize = parseInt(req.query.pageSize) || 15;
   const isPrasadam = req.query.isPrasadam === "true";
+  const role = req?.user?.role;
+  const userId = req?.user?.id;
+
+  if (!role || !userId) {
+    throw new AppError("Unauthorized user", 401);
+  }
   let filter = {
     status: "success",
   };
 
-  if (id) {
-    if (!mongoose.isValidObjectId(id)) {
-      throw new AppError(`Invalid Id: ${id}`, 400);
+  if (role === "admin") {
+    if (id) {
+      if (!mongoose.isValidObjectId(id)) {
+        throw new AppError(`Invalid Id: ${id}`, 400);
+      }
+      filter.campaigner = id;
+    }
+  }
+
+  if (role === "devotee") {
+    const devotee = await TempleDevote.findOne({ userId });
+    if (!devotee) {
+      throw new AppError("Devotee Not found", 404);
     }
 
-    filter.campaigner = id;
+    const campaigners = await Campaigner.find({
+      templeDevoteInTouch: devotee._id,
+    }).select("_id");
+
+    const campaignerIds = campaigners.map((c) => c._id);
+
+    if (!campaignerIds.length) {
+      return {
+        status: 200,
+        data: [],
+        pagination: { total: 0 },
+      };
+    }
+
+    if (id) {
+      if (!mongoose.isValidObjectId(id)) {
+        throw new AppError(`Invalid Id: ${id}`, 400);
+      }
+
+      if (!campaignerIds.some((c) => c.toString() === id)) {
+        throw new AppError("Access denied to this campaigner", 403);
+      }
+
+      filter.campaigner = id;
+    } else {
+      filter.campaigner = { $in: campaignerIds };
+    }
   }
 
   if (campId) {
