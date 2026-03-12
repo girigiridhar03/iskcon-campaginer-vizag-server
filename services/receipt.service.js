@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { AppError } from "../utils/AppError.js";
 import Donation from "../models/donation.model.js";
 import fs from "fs";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, StandardFonts } from "pdf-lib";
 import numToWord from "number-to-words";
 import path from "path";
 
@@ -29,31 +29,42 @@ export const generateReceiptBuffer = async (donationId) => {
   const existingPdf = fs.readFileSync(templatePath);
 
   const pdfDoc = await PDFDocument.load(existingPdf);
-  // const seva = donationDetails.seva
-  //   ? donationDetails.seva.sevaName
-  //   : "Mandir Nirman Seva";
-
+  const seva = "Mandir Nirman Seva";
+  const email = donationDetails?.donorEmail
+    ? donationDetails?.donorEmail
+    : "---";
+  const pan = donationDetails?.pan ? donationDetails?.pan : "---";
+  const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
   const form = pdfDoc.getForm();
-
+  form.getFields().forEach((field) => {
+    console.log(field.constructor.name, field.getName());
+  });
   form.getTextField("name").setText(donationDetails.donorName.toUpperCase());
   form.getTextField("phoneNum").setText(donationDetails.donorPhone);
   form.getTextField("inWords").setText(amountWords);
-  form.getTextField("date").setText(formattedDate);
   form.getTextField("transactionDate").setText(formattedDate);
+  form.getTextField("transaction_Date").setText(formattedDate);
   form.getTextField("address").setText(address);
   form.getTextField("80G").setText(taxExemption);
-  // form.getTextField("toward").setText(seva);
+  form.getTextField("towards").setText(seva);
+  form.getTextField("email").setText(email);
+  form.getTextField("enrolledBy").setText("HKM");
+  form.getTextField("pan").setText(pan);
 
   form
     .getTextField("amount")
-    .setText(`RS.${donationDetails.amount.toLocaleString("en-IN")}/-`);
+    .setText(`${donationDetails.amount.toLocaleString("en-IN")}/-`);
 
   form
     .getTextField("transactionNumber")
     .setText(donationDetails.gatewayPaymentId);
 
-  form.getTextField("receiptNum").setText(donationDetails.receiptNumber);
-
+  const fields = form.getFields();
+  fields.forEach((field) => {
+    if (field.updateAppearances) {
+      field.updateAppearances(boldFont);
+    }
+  });
   form.flatten();
 
   return await pdfDoc.save();

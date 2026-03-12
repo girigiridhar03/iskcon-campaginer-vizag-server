@@ -7,7 +7,11 @@ import { generateReceiptNumber } from "../utils/utils.js";
 import fs from "fs";
 import path from "path";
 import { generateReceiptBuffer } from "./receipt.service.js";
-import { sendRecieptWhatsapp } from "./whatsapp.service.js";
+import {
+  sendRecieptWhatsapp,
+  sendWhatsappMessage,
+} from "./whatsapp.service.js";
+import TempleDevote from "../models/templeDevote.model.js";
 
 export const razorpayWebhookService = async (req, res) => {
   try {
@@ -57,11 +61,17 @@ export const razorpayWebhookService = async (req, res) => {
             $inc: { raisedAmount: updatedDonation.amount },
           });
         }
-
+        let campaigner;
         if (updatedDonation.campaigner) {
-          await Campaigner.findByIdAndUpdate(updatedDonation.campaigner, {
-            $inc: { raisedAmount: updatedDonation.amount },
-          });
+          campaigner = await Campaigner.findByIdAndUpdate(
+            updatedDonation.campaigner,
+            {
+              $inc: { raisedAmount: updatedDonation.amount },
+            },
+            {
+              returnDocument: "after",
+            },
+          ).populate("templeDevoteInTouch", "phoneNumber");
         }
 
         const tmpDir = path.join(process.cwd(), "tmp");
@@ -74,20 +84,66 @@ export const razorpayWebhookService = async (req, res) => {
         );
         const pdfBytes = await generateReceiptBuffer(updatedDonation._id);
         fs.writeFileSync(filePath, pdfBytes);
+        const phoneNumber = updatedDonation.donorPhone
+          .replace(/\D/g, "")
+          .startsWith("91")
+          ? updatedDonation.donorPhone.replace(/\D/g, "")
+          : `91${updatedDonation.donorPhone.replace(/\D/g, "")}`;
 
-        const phoneNumber = updatedDonation.donorPhone.startsWith("91")
-          ? updatedDonation.donorPhone
-          : `91${updatedDonation.donorPhone}`;
+        const devoteePhoneNumber = campaigner?.templeDevoteInTouch?.phoneNumber
+          ?.replace(/\D/g, "")
+          ?.startsWith("91")
+          ? campaigner.templeDevoteInTouch.phoneNumber.replace(/\D/g, "")
+          : `91${campaigner?.templeDevoteInTouch?.phoneNumber?.replace(/\D/g, "")}`;
+
+        const campaignerPhoneNumber = campaigner.phoneNumber
+          ?.replace(/\D/g, "")
+          ?.startsWith("91")
+          ? campaigner.phoneNumber?.replace(/\D/g, "")
+          : `91${campaigner.phoneNumber?.replace(/\D/g, "")}`;
+
         try {
-          await sendRecieptWhatsapp(
-            phoneNumber,
-            filePath,
-            updatedDonation.donorName,
-            updatedDonation.amount,
-          );
+          const params = [
+            { type: "text", text: campaigner.name },
+            { type: "text", text: updatedDonation?.donorName },
+            { type: "text", text: String(updatedDonation?.amount) },
+          ];
+
+          const promises = [
+            sendRecieptWhatsapp(
+              phoneNumber,
+              filePath,
+              updatedDonation.donorName,
+              updatedDonation.amount,
+            ),
+          ];
+
+          if (campaignerPhoneNumber) {
+            promises.push(
+              sendWhatsappMessage(
+                campaignerPhoneNumber,
+                "campaigner_donation_notification",
+                params,
+              ),
+            );
+          }
+
+          if (devoteePhoneNumber) {
+            promises.push(
+              sendWhatsappMessage(
+                devoteePhoneNumber,
+                "preacher_group_alert",
+                params,
+              ),
+            );
+          }
+
+          await Promise.all(promises);
         } finally {
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
+          try {
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+          } catch (err) {
+            console.error("Failed to delete temp receipt:", err);
           }
         }
       }

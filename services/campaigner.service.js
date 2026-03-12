@@ -7,6 +7,7 @@ import { deleteFromGCS, uploadToGCS } from "../utils/GCS.js";
 import TempleDevote from "../models/templeDevote.model.js";
 import Donation from "../models/donation.model.js";
 import slugify from "slugify";
+import { sendWhatsappMessage } from "./whatsapp.service.js";
 
 export const createCampaignerService = async (req) => {
   const {
@@ -137,6 +138,31 @@ export const createCampaignerService = async (req) => {
     },
   });
 
+  const campaignerPhoneNumber = newCampaigner.phoneNumber
+    ?.replace(/\D/g, "")
+    ?.startsWith("91")
+    ? newCampaigner.phoneNumber?.replace(/\D/g, "")
+    : `91${newCampaigner.phoneNumber?.replace(/\D/g, "")}`;
+
+  if (newCampaigner.status === "active") {
+    const params = [
+      { type: "text", text: newCampaigner.name },
+      {
+        type: "text",
+        text: `https://campaigns.harekrishnavizag.org/${newCampaigner.slug}`,
+      },
+    ];
+    try {
+      await sendWhatsappMessage(
+        campaignerPhoneNumber,
+        "campaigner_onboarding_info",
+        params,
+      );
+    } catch (error) {
+      console.error("Whatsapp failed:", err.message);
+    }
+  }
+
   return {
     status: 201,
     message:
@@ -220,18 +246,45 @@ export const getCampaignerService = async (req) => {
     .skip(skip)
     .limit(pageSize)
     .select("-createdAt -updatedAt");
-
-  const campaignersWithFundersCount = await Promise.all(
+  const campaignersWithDonors = await Promise.all(
     campaigners.map(async (item) => {
-      const funderCount = await Donation.countDocuments({
-        campaign: campId,
-        campaigner: item._id,
-        status: "success",
-      });
+      const donorsData =
+        (
+          await Donation.aggregate([
+            {
+              $match: {
+                campaign: new mongoose.Types.ObjectId(campId),
+                campaigner: item._id,
+                status: "success",
+              },
+            },
+            { $sort: { amount: -1 } },
+            {
+              $group: {
+                _id: "$campaigner",
+                funderCount: { $sum: 1 },
+                topDonors: {
+                  $push: {
+                    name: "$donorName",
+                    amount: "$amount",
+                  },
+                },
+              },
+            },
+            {
+              $project: {
+                _id: 0,
+                funderCount: 1,
+                topDonors: { $slice: ["$topDonors", 3] },
+              },
+            },
+          ])
+        )[0] || {};
 
       return {
         ...item.toObject(),
-        funderCount,
+        funderCount: donorsData.funderCount ?? 0,
+        topDonors: donorsData.topDonors ?? [],
       };
     }),
   );
@@ -243,7 +296,7 @@ export const getCampaignerService = async (req) => {
   return {
     status: 200,
     message: "Fetched campaigners successfully.",
-    campaigners: campaignersWithFundersCount,
+    campaigners: campaignersWithDonors,
     count: totalCampaigners,
     totalPages,
   };
@@ -386,6 +439,13 @@ export const updateCampaignerService = async (req) => {
   if (!mongoose.isValidObjectId(id)) {
     throw new AppError(`Invalid Id: ${id}`, 400);
   }
+  const campaigner = await Campaigner.findById(id);
+
+  if (!campaigner) {
+    throw new AppError("Campaigner not found", 404);
+  }
+
+  const previousStatus = campaigner.status;
 
   const updateData = Object.fromEntries(
     Object.entries(req.body).filter(([_, value]) => value !== undefined),
@@ -424,10 +484,28 @@ export const updateCampaignerService = async (req) => {
     },
   );
 
-  if (!updatedCampaigner) {
-    throw new AppError("Campaigner not found", 404);
-  }
+  if (previousStatus !== "active" && updateData.status === "active") {
+    const phone = updatedCampaigner.phoneNumber.replace(/\D/g, "");
+    const campaignerPhoneNumber = phone.startsWith("91") ? phone : `91${phone}`;
 
+    const params = [
+      { type: "text", text: updatedCampaigner.name },
+      {
+        type: "text",
+        text: `https://campaigns.harekrishnavizag.org/${updatedCampaigner.slug}`,
+      },
+    ];
+
+    try {
+      await sendWhatsappMessage(
+        campaignerPhoneNumber,
+        "campaigner_registration_link_success",
+        params,
+      );
+    } catch (error) {
+      console.error("WhatsApp sending failed:", error.message);
+    }
+  }
   return {
     status: 200,
     message: "Updated successfully",

@@ -40,10 +40,10 @@ const donationSchema = new mongoose.Schema(
       default: false,
     },
     address: {
-      pincode: String,
-      city: String,
       fullAddress: String,
       state: String,
+      city: String,
+      pincode: String,
     },
     prasadam: {
       type: Boolean,
@@ -80,6 +80,12 @@ const donationSchema = new mongoose.Schema(
     versionKey: false,
   },
 );
+donationSchema.index({
+  campaign: 1,
+  campaigner: 1,
+  status: 1,
+  amount: -1,
+});
 
 const Donation = mongoose.model("Donation", donationSchema);
 
