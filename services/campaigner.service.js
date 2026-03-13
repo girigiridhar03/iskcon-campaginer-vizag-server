@@ -537,19 +537,6 @@ export const deleteCampaignerService = async (req) => {
       400,
     );
   }
-  const filename = campaigner?.image?.filename;
-
-  if (filename) {
-    try {
-      await deleteFromGCS(filename);
-    } catch (err) {
-      console.error("Failed to delete from GCS:", err.message);
-    }
-
-    await Media.findOneAndDelete({
-      "image.filename": filename,
-    });
-  }
 
   await Campaigner.deleteOne({ _id: id });
 
