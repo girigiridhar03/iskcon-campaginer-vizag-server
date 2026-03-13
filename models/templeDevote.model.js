@@ -22,6 +22,12 @@ const templeDevoteSchema = new mongoose.Schema(
       unique: true,
       required: true,
     },
+    shortForm: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
   },
   {
     timestamps: true,

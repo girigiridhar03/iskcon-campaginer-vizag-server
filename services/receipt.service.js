@@ -7,7 +7,16 @@ import numToWord from "number-to-words";
 import path from "path";
 
 export const generateReceiptBuffer = async (donationId) => {
-  const donationDetails = await Donation.findById(donationId).populate("seva");
+  const donationDetails = await Donation.findById(donationId)
+    .populate("seva")
+    .populate({
+      path: "campaigner",
+      select: "templeDevoteInTouch",
+      populate: {
+        path: "templeDevoteInTouch",
+        select: "shortForm",
+      },
+    });
 
   const amountWords =
     numToWord.toWords(donationDetails.amount).toUpperCase() + " RUPEES ONLY";
@@ -27,6 +36,8 @@ export const generateReceiptBuffer = async (donationId) => {
   const templatePath = path.join(process.cwd(), "receipt-template.pdf");
 
   const existingPdf = fs.readFileSync(templatePath);
+  const shortForm = donationDetails?.campaigner?.templeDevoteInTouch?.shortForm;
+  const SF = shortForm ? shortForm : "---";
 
   const pdfDoc = await PDFDocument.load(existingPdf);
   const seva = "Mandir Nirman Seva";
@@ -48,7 +59,7 @@ export const generateReceiptBuffer = async (donationId) => {
   form.getTextField("80G").setText(taxExemption);
   form.getTextField("towards").setText(seva);
   form.getTextField("email").setText(email);
-  form.getTextField("enrolledBy").setText("HKM");
+  form.getTextField("enrolledBy").setText(SF);
   form.getTextField("pan").setText(pan);
 
   form

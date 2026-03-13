@@ -6,7 +6,7 @@ import bcrypt from "bcrypt";
 import Campaigner from "../models/campaigner.model.js";
 
 export const createTempleDevoteService = async (req) => {
-  const { name, phoneNumber, email } = req.body;
+  const { name, phoneNumber, email, shortForm } = req.body;
 
   if (!name || !name.trim()) {
     throw new AppError(`Devote name is required`, 400);
@@ -18,6 +18,10 @@ export const createTempleDevoteService = async (req) => {
 
   if (!email || !email.trim()) {
     throw new AppError(`Devote Mail is required`, 400);
+  }
+
+  if (!shortForm || !shortForm.trim()) {
+    throw new AppError(`Short Form is required`, 400);
   }
 
   const normalizeEmail = email.trim().toLowerCase();
@@ -47,6 +51,7 @@ export const createTempleDevoteService = async (req) => {
     phoneNumber,
     email: normalizeEmail,
     userId: newRegistration._id,
+    shortForm,
   });
 
   return {
