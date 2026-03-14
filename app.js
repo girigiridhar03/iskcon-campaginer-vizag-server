@@ -60,6 +60,8 @@ app.use("/api/dashboard", dashboardRouter);
 app.use("/api/receipt", recieptRouter);
 
 import { errorHandler } from "./utils/handlers.js";
+import { multerErrorHandler } from "./middlewares/multer.middleware.js";
+app.use(multerErrorHandler);
 app.use(errorHandler);
 
 export default app;
