@@ -24,10 +24,12 @@ const campaignSchema = new mongoose.Schema(
 
     endDate: {
       type: Date,
-      required: true,
       validate: {
         validator: function (value) {
-          return value > this.startDate;
+          if (this.startDate) {
+            return value > this.startDate;
+          }
+          return true;
         },
         message: "End date must be after start date",
       },

@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Campaign from "../models/campaign.model.js";
 import { AppError } from "../utils/AppError.js";
 
@@ -124,5 +125,114 @@ export const getCampaginListService = async (req) => {
     data: campagins,
     total,
     totalPages,
+  };
+};
+
+export const getSingleCampaignService = async (req) => {
+  const id = req.params.id;
+
+  if (!id) {
+    throw new AppError(`Id is required`, 400);
+  }
+
+  if (!mongoose.isValidObjectId(id)) {
+    throw new AppError(`Invalid ID: ${id}`, 400);
+  }
+
+  const campaign = await Campaign.findById(id);
+
+  if (!campaign) {
+    throw new AppError("Campaign not found", 404);
+  }
+
+  return {
+    status: 200,
+    message: "Single Campaign Details Fetched successfully",
+    data: campaign,
+  };
+};
+
+export const updateCampaignService = async (req) => {
+  const id = req.params.id;
+
+  if (!id) {
+    throw new AppError("Id is required", 400);
+  }
+
+  if (!mongoose.isValidObjectId(id)) {
+    throw new AppError(`Invalid ID: ${id}`, 400);
+  }
+
+  const campaign = await Campaign.findById(id);
+
+  if (!campaign) {
+    throw new AppError("Campaign not found", 404);
+  }
+
+  const updateData = Object.fromEntries(
+    Object.entries(req.body).filter(([_, value]) => value !== undefined),
+  );
+
+  delete updateData._id;
+  delete updateData.startDate;
+
+  if (updateData.endDate) {
+    const endDate = new Date(updateData.endDate);
+
+    if (endDate <= campaign.startDate) {
+      throw new AppError("End date must be after start date", 400);
+    }
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    throw new AppError("No fields provided for update", 400);
+  }
+
+  const updatedCampaign = await Campaign.findByIdAndUpdate(
+    id,
+    { $set: updateData },
+    {
+      returnDocument: "after",
+      runValidators: true,
+    },
+  );
+
+  return {
+    status: 200,
+    message: "Campaign updated successfully",
+    data: updatedCampaign,
+  };
+};
+
+export const deleteCampaignService = async (req) => {
+  const id = req.params.id;
+
+  if (!id) {
+    throw new AppError("Id is required", 400);
+  }
+
+  if (!mongoose.isValidObjectId(id)) {
+    throw new AppError(`Invalid ID: ${id}`, 400);
+  }
+
+  const campaign = await Campaign.findById(id);
+
+  if (!campaign) {
+    throw new AppError("Campaign Not found", 404);
+  }
+
+  if (campaign.raisedAmount > 0) {
+    throw new AppError(
+      "Campaign cannot be deleted because donations have already been raised",
+      400,
+    );
+  }
+
+  await campaign.deleteOne();
+
+  return {
+    status: 200,
+    message: "Campaign Deleted successfully",
+    data: campaign,
   };
 };

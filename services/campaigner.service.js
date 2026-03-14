@@ -538,7 +538,7 @@ export const deleteCampaignerService = async (req) => {
     );
   }
 
-  await Campaigner.deleteOne({ _id: id });
+  await Campaigner.deleteOne();
 
   return {
     status: 200,

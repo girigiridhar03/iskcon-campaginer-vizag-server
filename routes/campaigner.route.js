@@ -35,7 +35,7 @@ campaignerRouter.get(
 campaignerRouter.get("/details/:slugId/", getSingleCampaigner);
 campaignerRouter.get("/:campaignId", getCampaigners);
 campaignerRouter.get("/admin/:campaignId", optionalAuth, getCampaigners);
-campaignerRouter.put(
+campaignerRouter.patch(
   "/:id",
   verifyToken,
   authorizeRole("admin", "devotee"),
