@@ -182,7 +182,7 @@ export const getCampaignerService = async (req) => {
   const campStatus = req.query.campStatus;
   const search = req.query.search;
   const sort = req.query.sort;
-  let sortOptions = { raisedAmount: -1 };
+  let sortOptions = { raisedAmount: -1, _id: -1 };
   const role = req?.user?.role;
   const userId = req?.user?.id;
 
@@ -226,17 +226,17 @@ export const getCampaignerService = async (req) => {
   }
 
   if (sort === "raised_asc") {
-    sortOptions = { raisedAmount: 1 };
+    sortOptions = { raisedAmount: 1, _id: 1 };
   } else if (sort === "raised_desc") {
-    sortOptions = { raisedAmount: -1 };
+    sortOptions = { raisedAmount: -1, _id: -1 };
   } else if (sort === "target_asc") {
-    sortOptions = { targetAmount: 1 };
+    sortOptions = { targetAmount: 1, _id: 1 };
   } else if (sort === "target_desc") {
-    sortOptions = { targetAmount: -1 };
+    sortOptions = { targetAmount: -1, _id: -1 };
   } else if (sort === "createdAt_asc") {
-    sortOptions = { createdAt: 1 };
+    sortOptions = { createdAt: 1, _id: 1 };
   } else if (sort === "created_desc") {
-    sortOptions = { createdAt: -1 };
+    sortOptions = { createdAt: -1, _id: -1 };
   }
 
   const campaigners = await Campaigner.find(options)
