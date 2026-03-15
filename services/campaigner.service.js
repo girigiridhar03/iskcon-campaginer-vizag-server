@@ -9,6 +9,14 @@ import Donation from "../models/donation.model.js";
 import slugify from "slugify";
 import { sendWhatsappMessage } from "./whatsapp.service.js";
 
+const SHARE_BASE_URL =
+  "https://campaign-server-882278565284.asia-south1.run.app/share";
+
+  
+const getCampaignerShareLink = (slug) => {
+  return `${SHARE_BASE_URL}/${slug}`;
+};
+
 export const createCampaignerService = async (req) => {
   const {
     name,
@@ -149,7 +157,7 @@ export const createCampaignerService = async (req) => {
       { type: "text", text: newCampaigner.name },
       {
         type: "text",
-        text: `https://campaigns.harekrishnavizag.org/${newCampaigner.slug}`,
+        text: getCampaignerShareLink(newCampaigner.slug),
       },
     ];
     try {
@@ -493,7 +501,7 @@ export const updateCampaignerService = async (req) => {
       { type: "text", text: updatedCampaigner.name },
       {
         type: "text",
-        text: `https://campaigns.harekrishnavizag.org/${updatedCampaigner.slug}`,
+        text: getCampaignerShareLink(updatedCampaigner.slug),
       },
     ];
 
