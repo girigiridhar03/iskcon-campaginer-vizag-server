@@ -1,9 +1,10 @@
 import { bucket } from "../config/GCS.config.js";
 import sharp from "sharp";
+import { AppError } from "./AppError.js";
 
 export const uploadToGCS = async (file) => {
   if (!["image/jpeg", "image/jpg", "image/png"].includes(file.mimetype)) {
-    throw new Error("Only JPG, JPEG, and PNG images are allowed");
+    throw new AppError("Only JPG, JPEG, and PNG images are allowed", 400);
   }
 
   let compressedBuffer;
