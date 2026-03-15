@@ -75,7 +75,10 @@ export const createDonationOrderService = async (req) => {
     throw new AppError("Campaign not found", 404);
   }
 
-  const isExistCampaigner = await Campaigner.findOne({ slug: slug });
+  const isExistCampaigner = await Campaigner.findOne({
+    slug: slug,
+    campaignId,
+  });
 
   if (!isExistCampaigner) {
     throw new AppError("Campaigner not found", 404);
@@ -95,15 +98,22 @@ export const createDonationOrderService = async (req) => {
     address,
     prasadam,
   });
-
-  const order = await razorpay.orders.create({
-    amount: amount * 100,
-    currency: "INR",
-    receipt: createDonation._id.toString(),
-    notes: {
-      donationId: createDonation._id.toString(),
-    },
-  });
+  let order;
+  try {
+    order = await razorpay.orders.create({
+      amount: Number(amount) * 100,
+      currency: "INR",
+      receipt: createDonation._id.toString(),
+      notes: {
+        donationId: createDonation._id.toString(),
+      },
+    });
+  } catch (error) {
+    throw new AppError(
+      error?.error?.description || "Payment gateway error",
+      error?.statusCode || 500,
+    );
+  }
 
   await Payment.create({
     donation: createDonation._id,
@@ -228,7 +238,7 @@ export const getDonorsService = async (req) => {
     })
     .sort({ createdAt: -1 })
     .skip(skip)
-    .limit(pageSize)
+    .limit(pageSize);
   const total = await Donation.countDocuments(filter);
 
   return {
