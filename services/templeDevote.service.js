@@ -115,7 +115,7 @@ export const deleteDevoteService = async (req) => {
     throw new AppError("Not Found", 404);
   }
 
-  await Register.findByIdAndUpdate(deletedDevote.userId);
+  await Register.findByIdAndDelete(deletedDevote.userId);
 
   return {
     status: 200,

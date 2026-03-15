@@ -97,7 +97,7 @@ export const resetPasswordService = async (req) => {
     throw new AppError("Old password is required", 400);
   }
 
-  if (!newPassword || !oldPassword?.trim()) {
+  if (!newPassword || !newPassword?.trim()) {
     throw new AppError("New Password is required", 400);
   }
 
