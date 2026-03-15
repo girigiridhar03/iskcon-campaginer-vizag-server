@@ -3,7 +3,6 @@ import {
   createCampaigner,
   deleteCampaigner,
   getCampaigners,
-  getCampaignerSharePage,
   getLastestDonorofCampaigner,
   getSingleCampaigner,
   getTopDonors,
@@ -28,7 +27,6 @@ campaignerRouter.post(
 );
 
 // Dynamic Routes
-campaignerRouter.get("/share/:slugId", getCampaignerSharePage);
 campaignerRouter.get("/topdonors/:campaignId", getTopDonors);
 campaignerRouter.get(
   "/latestDonors/:campaignId/:slug",

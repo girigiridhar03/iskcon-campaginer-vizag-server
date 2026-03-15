@@ -39,7 +39,6 @@ app.get("/health", (req, res) => {
 
 import campaignRouter from "./routes/campaign.route.js";
 import campaignerRouter from "./routes/campaigner.route.js";
-import { getCampaignerSharePage } from "./controllers/campaigner.controller.js";
 import devoteRouter from "./routes/templeDevote.route.js";
 import registerRouter from "./routes/register.route.js";
 import donationRouter from "./routes/donation.route.js";
@@ -51,7 +50,6 @@ import recieptRouter from "./routes/receipt.route.js";
 
 app.use("/api", registerRouter);
 app.use("/api/campaign", campaignRouter);
-app.get("/share/:slugId", getCampaignerSharePage);
 app.use("/api/campaigner", campaignerRouter);
 app.use("/api/devote", devoteRouter);
 app.use("/api/donations", donationRouter);
