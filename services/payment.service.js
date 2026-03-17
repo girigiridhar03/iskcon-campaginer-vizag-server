@@ -116,6 +116,15 @@ export const capturePaymentService = async ({
     paymentDoc.status === "captured" &&
     existingDonation.status === "success"
   ) {
+    if (
+      !paymentDoc.rawResponse &&
+      rawResponse &&
+      typeof rawResponse === "object" &&
+      Object.keys(rawResponse).length > 0
+    ) {
+      paymentDoc.rawResponse = rawResponse;
+      await paymentDoc.save();
+    }
     return {
       status: 200,
       message: "Payment already processed",
