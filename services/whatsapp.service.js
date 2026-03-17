@@ -22,7 +22,7 @@ export const sendRecieptWhatsapp = async (
           type: "body",
           parameters: [
             { type: "text", text: donorName },
-            { type: "text", text: String(amount) },
+            { type: "text", text: Number(amount || 0).toLocaleString("en-IN")},
           ],
         },
       ]),
