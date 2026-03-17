@@ -11,10 +11,12 @@ export const uploadToGCS = async (file) => {
 
   if (file.mimetype === "image/jpeg" || file.mimetype === "image/jpg") {
     compressedBuffer = await sharp(file.buffer)
-      .jpeg({ quality: 70, mozjpeg: true })
+      .resize({ width: 500 })
+      .jpeg({ quality: 60, mozjpeg: true })
       .toBuffer();
   } else if (file.mimetype === "image/png") {
     compressedBuffer = await sharp(file.buffer)
+      .resize({ width: 500 })
       .png({ compressionLevel: 9 })
       .toBuffer();
   }
