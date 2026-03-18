@@ -5,6 +5,7 @@ import jwt from "jsonwebtoken";
 
 export const registerService = async (req) => {
   const { name, email, password } = req.body;
+  const role = req.headers["role"];
 
   if (!name || !name.trim()) {
     throw new AppError("name is required", 400);
@@ -31,7 +32,7 @@ export const registerService = async (req) => {
     name,
     email,
     password: hashPassword,
-    role: "admin",
+    role,
   });
 
   return {
