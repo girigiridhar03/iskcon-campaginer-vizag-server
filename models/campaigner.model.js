@@ -5,12 +5,10 @@ const campaignerSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
-      index: true,
     },
     slug: {
       type: String,
-      unique: true,
-      index: true,
+      required: true,
     },
     image: {
       filename: {
@@ -64,7 +62,8 @@ campaignerSchema.virtual("percentage").get(function () {
     100,
   );
 });
-
+campaignerSchema.index({ slug: 1, campaignId: 1 }, { unique: true });
+campaignerSchema.index({ name: 1, campaignId: 1 }, { unique: true });
 const Campaigner = mongoose.model("Campaigner", campaignerSchema);
 
 export default Campaigner;
