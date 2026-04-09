@@ -3,9 +3,26 @@ import Seva from "../models/seva.model.js";
 import { AppError } from "../utils/AppError.js";
 
 export const addSevaService = async (req) => {
-  const { sevaName, sevaPoints, sevaAmount } = req.body;
+  const {
+    sevaCategory,
+    sevaSubCategory,
+    sevaCode,
+    sevaSubCode,
+    sevaCategoryId,
+    sevaSubCategoryId,
+    sevaPoints,
+    sevaAmount,
+  } = req.body;
 
-  const requiredFields = ["sevaName", "sevaPoints", "sevaAmount"];
+  const requiredFields = [
+    "sevaCategory",
+    "sevaSubCategory",
+    "sevaCode",
+    "sevaCategoryId",
+    "sevaSubCategoryId",
+    "sevaPoints",
+    "sevaAmount",
+  ];
 
   for (const field of requiredFields) {
     if (!req.body[field]) {
@@ -24,9 +41,21 @@ export const addSevaService = async (req) => {
   if (Number(sevaAmount) <= 0) {
     throw new AppError("SevaAmount must be in positive digits", 400);
   }
+  if (isNaN(Number(sevaCategoryId))) {
+    throw new AppError("SevaCategoryId must be a number", 400);
+  }
+
+  if (sevaSubCategoryId !== undefined && isNaN(Number(sevaSubCategoryId))) {
+    throw new AppError("SevaSubCategoryId must be a number", 400);
+  }
 
   const newSeva = await Seva.create({
-    sevaName,
+    sevaCategory,
+    sevaSubCategory,
+    sevaCode,
+    sevaSubCode,
+    sevaCategoryId,
+    sevaSubCategoryId,
     sevaAmount,
     sevaPoints,
   });
@@ -76,7 +105,16 @@ export const deleteSevaService = async (req) => {
 
 export const updateSevaService = async (req) => {
   const sevaId = req.params.sevaId;
-  const { sevaName, sevaPoints, sevaAmount } = req.body;
+  const {
+    sevaCategory,
+    sevaSubCategory,
+    sevaCode,
+    sevaSubCode,
+    sevaCategoryId,
+    sevaSubCategoryId,
+    sevaPoints,
+    sevaAmount,
+  } = req.body;
 
   if (!sevaId) {
     throw new AppError(`SevaId is required`, 400);
@@ -88,7 +126,16 @@ export const updateSevaService = async (req) => {
 
   const updatedSeva = await Seva.findByIdAndUpdate(
     sevaId,
-    { sevaName, sevaAmount, sevaPoints },
+    {
+      sevaCategory,
+      sevaSubCategory,
+      sevaCode,
+      sevaSubCode,
+      sevaCategoryId,
+      sevaSubCategoryId,
+      sevaPoints,
+      sevaAmount,
+    },
     { returnDocument: "after", runValidators: true },
   );
 

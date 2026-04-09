@@ -2,11 +2,29 @@ import mongoose from "mongoose";
 
 const sevaSchema = new mongoose.Schema(
   {
-    sevaName: {
+    sevaCategory: {
       type: String,
       required: true,
-      index: true,
-      trim: true,
+    },
+    sevaCategoryId: {
+      type: Number,
+      required: true,
+    },
+    sevaCode: {
+      type: String,
+      required: true,
+    },
+    sevaSubCategory: {
+      type: String,
+      required: true,
+    },
+    sevaSubCategoryId: {
+      type: Number,
+      required: true,
+    },
+    sevaSubCode: {
+      type: String,
+      default: null,
     },
     sevaPoints: [
       {

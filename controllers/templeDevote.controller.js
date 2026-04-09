@@ -15,9 +15,9 @@ export const createTempleDevote = asyncHandlers(async (req, res) => {
 });
 
 export const getTempleDevotes = asyncHandlers(async (req, res) => {
-  const { status, message, devotes } = await getTempleDevotesService(req);
+  const { status, message, data } = await getTempleDevotesService(req);
 
-  response(res, status, message, devotes);
+  response(res, status, message, data);
 });
 
 export const deleteDevote = asyncHandlers(async (req, res) => {

@@ -76,14 +76,54 @@ export const getTempleDevotesService = async (req) => {
     ];
   }
 
-  const devotes = await TempleDevote.find(filter)
+  const devotees = await TempleDevote.find(filter)
     .sort({ devoteName: 1 })
-    .select("-createdAt -updatedAt");
+    .select("-createdAt -updatedAt")
+    .lean();
+
+  if (devotees.length === 0) {
+    return {
+      status: 200,
+      message: "No devotees list",
+      data: [],
+    };
+  }
+
+  const devoteesId = devotees.map((devotee) => devotee._id);
+
+  const campaignersCount = await Campaigner.aggregate([
+    {
+      $match: {
+        templeDevoteInTouch: {
+          $in: devoteesId,
+        },
+      },
+    },
+    {
+      $group: {
+        _id: "$templeDevoteInTouch",
+        count: {
+          $sum: 1,
+        },
+      },
+    },
+  ]);
+
+  const campaignerMap = {};
+
+  campaignersCount.forEach((c) => {
+    campaignerMap[c._id.toString()] = c.count;
+  });
+
+  const updatedDevoteeList = devotees.map((devotee) => ({
+    ...devotee,
+    totalCampaigners: campaignerMap[devotee._id.toString()] || 0,
+  }));
 
   return {
     status: 200,
-    message: "Fetched Devotes list",
-    devotes,
+    message: "Fetched Devotees list",
+    data: updatedDevoteeList,
   };
 };
 
@@ -201,3 +241,4 @@ export const singleDevoteeService = async (req) => {
     data: devotee,
   };
 };
+
