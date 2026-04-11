@@ -36,6 +36,9 @@ images:
   - ${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:${COMMIT_SHA}
   - ${_AR_HOSTNAME}/${PROJECT_ID}/${_AR_REPOSITORY}/${_SERVICE_NAME}:latest
 
+options:
+  logging: CLOUD_LOGGING_ONLY
+
 substitutions:
   _AR_HOSTNAME: asia-south1-docker.pkg.dev
   _AR_REPOSITORY: cloud-run-source-deploy
