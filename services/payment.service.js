@@ -5,7 +5,7 @@ import Payment from "../models/payment.model.js";
 import Donation from "../models/donation.model.js";
 import Campaigner from "../models/campaigner.model.js";
 import Campaign from "../models/campaign.model.js";
-import { generateReceiptNumber } from "../utils/utils.js";
+import { dccApiService } from "../utils/utils.js";
 import { AppError } from "../utils/AppError.js";
 import { generateReceiptBuffer } from "./receipt.service.js";
 import {
@@ -22,11 +22,42 @@ const normalizePhoneNumber = (phoneNumber) => {
 };
 
 const sendDonationNotifications = async (updatedDonation, campaigner) => {
+  if (!updatedDonation?.receiptNumber) {
+    const phoneNumber = normalizePhoneNumber(updatedDonation?.donorPhone);
+
+    if (phoneNumber) {
+      await sendWhatsappMessage(
+        phoneNumber,
+        "regular_donation_success_message",
+        [
+          { type: "text", text: updatedDonation.donorName || "Donor" },
+          {
+            type: "text",
+            text: Number(updatedDonation.amount || 0).toLocaleString("en-IN"),
+          },
+          {
+            type: "text",
+            text: "Mandir Nirmana Seva",
+          },
+          {
+            type: "text",
+            text: "Mandir Nirmana Seva",
+          },
+        ],
+      );
+    }
+
+    return;
+  }
+
   const tmpDir = path.join(process.cwd(), "tmp");
 
   fs.mkdirSync(tmpDir, { recursive: true });
 
-  const filePath = path.join(tmpDir, `receipt-${updatedDonation._id}.pdf`);
+  const filePath = path.join(
+    tmpDir,
+    `receipt-${updatedDonation.donorName}-${updatedDonation._id}.pdf`,
+  );
   const pdfBytes = await generateReceiptBuffer(updatedDonation._id);
   fs.writeFileSync(filePath, pdfBytes);
 
@@ -106,7 +137,9 @@ export const capturePaymentService = async ({
 
   const linkedDonationId = paymentDoc.donation?.toString() || donationId;
 
-  const existingDonation = await Donation.findById(linkedDonationId);
+  const existingDonation = await Donation.findById(linkedDonationId)
+    .populate("seva")
+    .lean();
 
   if (!existingDonation) {
     throw new AppError("Donation record not found", 404);
@@ -131,8 +164,7 @@ export const capturePaymentService = async ({
     };
   }
 
-  const receiptNumber =
-    existingDonation.receiptNumber || generateReceiptNumber();
+  const dccResponse = await dccApiService(existingDonation, gatewayPaymentId);
 
   const updatedDonation = await Donation.findOneAndUpdate(
     {
@@ -141,8 +173,10 @@ export const capturePaymentService = async ({
     },
     {
       status: "success",
-      receiptNumber,
+      receiptNumber: dccResponse?.data?.ReceiptNumber || null,
       gatewayPaymentId,
+      dccDataSentAt: new Date(),
+      dccApiResponse: dccResponse,
     },
     { returnDocument: "after" },
   );

@@ -74,6 +74,8 @@ const donationSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
     },
+    dccDataSentAt: Date,
+    dccApiResponse: Object,
   },
   {
     timestamps: true,
