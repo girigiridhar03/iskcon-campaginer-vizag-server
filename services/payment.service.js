@@ -137,9 +137,8 @@ export const capturePaymentService = async ({
 
   const linkedDonationId = paymentDoc.donation?.toString() || donationId;
 
-  const existingDonation = await Donation.findById(linkedDonationId)
-    .populate("seva")
-    .lean();
+  const existingDonation =
+    await Donation.findById(linkedDonationId).populate("seva");
 
   if (!existingDonation) {
     throw new AppError("Donation record not found", 404);
@@ -158,6 +157,22 @@ export const capturePaymentService = async ({
       paymentDoc.rawResponse = rawResponse;
       await paymentDoc.save();
     }
+
+    if (!existingDonation.dccApiResponse) {
+      const dccResponse = await dccApiService(existingDonation, gatewayPaymentId);
+
+      existingDonation.receiptNumber =
+        existingDonation.receiptNumber ||
+        dccResponse?.data?.ReceiptNumber ||
+        null;
+      existingDonation.gatewayPaymentId =
+        existingDonation.gatewayPaymentId || gatewayPaymentId;
+      existingDonation.dccDataSentAt = new Date();
+      existingDonation.dccApiResponse = dccResponse;
+
+      await existingDonation.save();
+    }
+
     return {
       status: 200,
       message: "Payment already processed",
@@ -165,8 +180,6 @@ export const capturePaymentService = async ({
   }
 
   const dccResponse = await dccApiService(existingDonation, gatewayPaymentId);
-
-  console.log("dccApiResponse", dccResponse);
 
   const updatedDonation = await Donation.findOneAndUpdate(
     {
