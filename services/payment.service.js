@@ -166,7 +166,7 @@ export const capturePaymentService = async ({
 
   const dccResponse = await dccApiService(existingDonation, gatewayPaymentId);
 
-  console.log("dccResponse", dccResponse);
+  console.log("dccApiResponse", dccResponse);
 
   const updatedDonation = await Donation.findOneAndUpdate(
     {
