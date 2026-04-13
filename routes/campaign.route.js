@@ -15,7 +15,7 @@ import {
 
 const campaignRouter = express.Router();
 
-campaignRouter.post("/", createCampaign);
+campaignRouter.post("/", verifyToken, onlyAdmin, createCampaign);
 campaignRouter.get("/", getCurrentCampaign);
 campaignRouter.get(
   "/all-campagins",
