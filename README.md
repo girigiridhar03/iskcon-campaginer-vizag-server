@@ -166,7 +166,7 @@ All routes below are mounted from `app.js`.
 
 ### Auth
 
-- `POST /api/register` - create a user; role is supplied through the `role` request header
+- `POST /api/register` - create a user;
 - `POST /api/login` - authenticate and receive JWT
 - `GET /api` - fetch current logged-in admin/devotee details
 - `POST /api/reset-password` - change password for the authenticated user
