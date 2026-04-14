@@ -23,6 +23,11 @@ const templeDevoteSchema = new mongoose.Schema(
       required: true,
       lowercase: true,
     },
+    devoteeID: {
+      type: Number,
+      unique: true,
+      required: true,
+    },
     shortForm: {
       type: String,
       required: true,

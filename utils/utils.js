@@ -29,6 +29,7 @@ export const dccApiService = async (donation, gatewayPaymentId = null) => {
     modeOfPayment: 3,
     gatewayPaymentId: gatewayPaymentId || donation?.gatewayPaymentId || null,
     transactionDate: donation.createdAt.toLocaleDateString("en-GB"),
+    enrolledBy: donation?.campaigner?.templeDevoteInTouch?.devoteeID || null,
   };
 
   try {

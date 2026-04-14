@@ -6,7 +6,7 @@ import bcrypt from "bcrypt";
 import Campaigner from "../models/campaigner.model.js";
 
 export const createTempleDevoteService = async (req) => {
-  const { name, phoneNumber, email, shortForm } = req.body;
+  const { name, phoneNumber, email, shortForm, devoteeID } = req.body;
 
   if (!name || !name.trim()) {
     throw new AppError(`Devote name is required`, 400);
@@ -22,6 +22,14 @@ export const createTempleDevoteService = async (req) => {
 
   if (!shortForm || !shortForm.trim()) {
     throw new AppError(`Short Form is required`, 400);
+  }
+
+  if (!devoteeID) {
+    throw new AppError("DevoteeID is required", 400);
+  }
+
+  if (isNaN(Number(devoteeID))) {
+    throw new AppError(`DevoteeID must be an integer: ${devoteeID}`, 400);
   }
 
   const normalizeEmail = email.trim().toLowerCase();
@@ -49,6 +57,7 @@ export const createTempleDevoteService = async (req) => {
   const newDevote = await TempleDevote.create({
     devoteName: name,
     phoneNumber,
+    devoteeID: Number(devoteeID),
     email: normalizeEmail,
     userId: newRegistration._id,
     shortForm,
@@ -241,4 +250,3 @@ export const singleDevoteeService = async (req) => {
     data: devotee,
   };
 };
-

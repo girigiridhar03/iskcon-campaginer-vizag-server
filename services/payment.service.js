@@ -137,8 +137,16 @@ export const capturePaymentService = async ({
 
   const linkedDonationId = paymentDoc.donation?.toString() || donationId;
 
-  const existingDonation =
-    await Donation.findById(linkedDonationId).populate("seva");
+  const existingDonation = await Donation.findById(linkedDonationId)
+    .populate("seva")
+    .populate({
+      path: "campaigner",
+      select: "templeDevoteInTouch",
+      populate: {
+        path: "templeDevoteInTouch",
+        select: "devoteeID",
+      },
+    });
 
   if (!existingDonation) {
     throw new AppError("Donation record not found", 404);
@@ -159,7 +167,10 @@ export const capturePaymentService = async ({
     }
 
     if (!existingDonation.dccApiResponse) {
-      const dccResponse = await dccApiService(existingDonation, gatewayPaymentId);
+      const dccResponse = await dccApiService(
+        existingDonation,
+        gatewayPaymentId,
+      );
 
       existingDonation.receiptNumber =
         existingDonation.receiptNumber ||
