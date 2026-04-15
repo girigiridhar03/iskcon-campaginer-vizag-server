@@ -23,7 +23,7 @@ export const dccApiService = async (donation, gatewayPaymentId = null) => {
     PAN: donation?.pan || null,
     amount: String(donation?.amount || 0),
     accountType: 4,
-    sevaCategory: donation?.seva?.sevaCategoryId || 1,
+    sevaCategory: donation?.seva?.sevaCategoryId || 2,
     sevaSubCategory: donation?.seva?.sevaSubCategoryId || 3,
     sevaSubCategoryCode: donation?.seva?.sevaSubCode || "GDGD",
     modeOfPayment: 3,
