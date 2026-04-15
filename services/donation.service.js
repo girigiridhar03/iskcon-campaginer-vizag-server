@@ -93,7 +93,7 @@ export const createDonationOrderService = async (req) => {
     campaign: campaignId,
     campaigner: isExistCampaigner._id,
     status: "pending",
-    seva: sevaId,
+    seva: sevaId ? sevaId : null,
     pan,
     address,
     prasadam,
