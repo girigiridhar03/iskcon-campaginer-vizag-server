@@ -9,6 +9,23 @@ import Donation from "../models/donation.model.js";
 import slugify from "slugify";
 import { sendWhatsappMessage } from "./whatsapp.service.js";
 
+const sendWhatsappTemplate = async ({
+  phoneNumber,
+  templateId,
+  params = [],
+}) => {
+  try {
+    await sendWhatsappMessage(phoneNumber, templateId, params);
+    return { success: true };
+  } catch (error) {
+    console.error(
+      `WhatsApp send failed for template ${templateId}:`,
+      error.message,
+    );
+    return { success: false, error: error.message };
+  }
+};
+
 export const createCampaignerService = async (req) => {
   const {
     name,
@@ -144,23 +161,27 @@ export const createCampaignerService = async (req) => {
     ? newCampaigner.phoneNumber?.replace(/\D/g, "")
     : `91${newCampaigner.phoneNumber?.replace(/\D/g, "")}`;
 
+  const onboardingParams = [
+    { type: "text", text: newCampaigner.name },
+    {
+      type: "text",
+      text: `https://campaigns.harekrishnavizag.org/${newCampaigner.slug}`,
+    },
+  ];
+
   if (newCampaigner.status === "active") {
-    const params = [
-      { type: "text", text: newCampaigner.name },
-      {
-        type: "text",
-        text: `https://campaigns.harekrishnavizag.org/${newCampaigner.slug}`,
-      },
-    ];
-    try {
-      await sendWhatsappMessage(
-        campaignerPhoneNumber,
-        "campaigner_onboarding_info",
-        params,
-      );
-    } catch (error) {
-      console.error("Whatsapp failed:", err.message);
-    }
+    await sendWhatsappTemplate({
+      phoneNumber: campaignerPhoneNumber,
+      templateId: "campaigner_onboarding_info",
+      params: onboardingParams,
+    });
+  }
+
+  if (newCampaigner.status === "pending") {
+    await sendWhatsappTemplate({
+      phoneNumber: templeDevote.phoneNumber,
+      templateId: "campaigner_registration_notification",
+    });
   }
 
   return {
