@@ -18,8 +18,8 @@ const allowedOrigin = [
 ];
 import webhookRouter from "./routes/webhook.route.js";
 app.use(
-  "/api/webhooks",
-  bodyParser.raw({ type: "application/json" }),
+  "/api/webhooks/razorpay",
+  bodyParser.raw({ type: "*/*", limit: "1mb" }),
   webhookRouter,
 );
 app.use(noCache);

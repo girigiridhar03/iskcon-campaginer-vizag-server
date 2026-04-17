@@ -3,21 +3,73 @@ import Payment from "../models/payment.model.js";
 import Donation from "../models/donation.model.js";
 import { capturePaymentService } from "./payment.service.js";
 
+const getWebhookBodyBuffer = (body) => {
+  if (Buffer.isBuffer(body)) {
+    return body;
+  }
+
+  if (typeof body === "string") {
+    return Buffer.from(body);
+  }
+
+  if (body && typeof body === "object") {
+    return Buffer.from(JSON.stringify(body));
+  }
+
+  return Buffer.from("");
+};
+
+const isSignatureValid = (expectedSignature, receivedSignature) => {
+  if (!expectedSignature || !receivedSignature) {
+    return false;
+  }
+
+  const expected = Buffer.from(expectedSignature, "utf8");
+  const received = Buffer.from(receivedSignature, "utf8");
+
+  if (expected.length !== received.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(expected, received);
+};
+
 export const razorpayWebhookService = async (req, res) => {
   try {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
-    const razorpaySignature = req.headers["x-razorpay-signature"];
+    const razorpaySignatureHeader = req.headers["x-razorpay-signature"];
+    const razorpaySignature = Array.isArray(razorpaySignatureHeader)
+      ? razorpaySignatureHeader[0]
+      : razorpaySignatureHeader;
+    const rawBody = getWebhookBodyBuffer(req.body);
+
+    if (!secret) {
+      console.error("Webhook error: missing RAZORPAY_WEBHOOK_SECRET");
+      return res.status(500).send("Webhook secret not configured");
+    }
+
+    if (!razorpaySignature) {
+      return res.status(400).send("Missing Razorpay signature");
+    }
+
+    if (!rawBody.length) {
+      return res.status(400).send("Missing webhook body");
+    }
 
     const expectedSignature = crypto
       .createHmac("sha256", secret)
-      .update(req.body)
+      .update(rawBody)
       .digest("hex");
 
-    if (expectedSignature !== razorpaySignature) {
+    if (!isSignatureValid(expectedSignature, razorpaySignature)) {
+      console.error("Webhook error: invalid Razorpay signature", {
+        contentType: req.headers["content-type"],
+        bodyType: Buffer.isBuffer(req.body) ? "buffer" : typeof req.body,
+      });
       return res.status(400).send("Invalid signature");
     }
 
-    const event = JSON.parse(req.body.toString());
+    const event = JSON.parse(rawBody.toString("utf8"));
 
     if (event.event === "payment.captured") {
       const payment = event.payload.payment.entity;
