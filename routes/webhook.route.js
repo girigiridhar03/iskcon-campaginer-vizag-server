@@ -3,6 +3,6 @@ import { razorpayWebhookService } from "../services/webhook.service.js";
 
 const webhookRouter = express.Router();
 
-webhookRouter.post("/razorpay", razorpayWebhookService);
+webhookRouter.post("/", razorpayWebhookService);
 
 export default webhookRouter;
