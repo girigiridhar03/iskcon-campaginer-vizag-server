@@ -2,6 +2,22 @@ import mongoose from "mongoose";
 import Campaign from "../models/campaign.model.js";
 import { AppError } from "../utils/AppError.js";
 
+const syncCampaignStatuses = async () => {
+  const campaigns = await Campaign.find({}).select("startDate endDate status");
+
+  const statusUpdates = campaigns
+    .filter((campaign) => {
+      const previousStatus = campaign.status;
+      campaign.calculateStatus();
+      return campaign.status !== previousStatus;
+    })
+    .map((campaign) => campaign.save());
+
+  if (statusUpdates.length > 0) {
+    await Promise.all(statusUpdates);
+  }
+};
+
 export const createCampaignService = async (req) => {
   const { title, targetAmount, startDate, endDate } = req.body;
 
@@ -66,6 +82,8 @@ export const createCampaignService = async (req) => {
 export const getCurrentCampaignService = async (req) => {
   const status = req.query.status;
 
+  await syncCampaignStatuses();
+
   const campaign = await Campaign.findOne({ status }).select(
     "-createdAt -updatedAt",
   );
@@ -87,6 +105,8 @@ export const getCampaginListService = async (req) => {
   const page = parseInt(req.query.page) || 1;
   const pageSize = parseInt(req.query.pageSize) || 100;
   const skip = (page - 1) * pageSize;
+
+  await syncCampaignStatuses();
 
   let filters = {};
 
@@ -143,6 +163,13 @@ export const getSingleCampaignService = async (req) => {
 
   if (!campaign) {
     throw new AppError("Campaign not found", 404);
+  }
+
+  const previousStatus = campaign.status;
+  campaign.calculateStatus();
+
+  if (campaign.status !== previousStatus) {
+    await campaign.save();
   }
 
   return {
