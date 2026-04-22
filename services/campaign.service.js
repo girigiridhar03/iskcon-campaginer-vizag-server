@@ -2,19 +2,46 @@ import mongoose from "mongoose";
 import Campaign from "../models/campaign.model.js";
 import { AppError } from "../utils/AppError.js";
 
-const syncCampaignStatuses = async () => {
-  const campaigns = await Campaign.find({}).select("startDate endDate status");
+const getCampaignStatusFilter = (status) => {
+  const now = new Date();
 
-  const statusUpdates = campaigns
+  if (status === "upcoming") {
+    return { startDate: { $gt: now } };
+  }
+
+  if (status === "active") {
+    return {
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+    };
+  }
+
+  if (status === "closed") {
+    return { endDate: { $lt: now } };
+  }
+
+  return {};
+};
+
+const syncCampaignStatuses = async (campaigns) => {
+  const campaignList = Array.isArray(campaigns) ? campaigns : [campaigns];
+
+  const statusUpdates = campaignList
+    .filter(Boolean)
     .filter((campaign) => {
       const previousStatus = campaign.status;
       campaign.calculateStatus();
       return campaign.status !== previousStatus;
     })
-    .map((campaign) => campaign.save());
+    .map((campaign) => ({
+      updateOne: {
+        filter: { _id: campaign._id },
+        update: { $set: { status: campaign.status } },
+      },
+    }));
 
   if (statusUpdates.length > 0) {
-    await Promise.all(statusUpdates);
+    await Campaign.bulkWrite(statusUpdates);
   }
 };
 
@@ -81,16 +108,15 @@ export const createCampaignService = async (req) => {
 
 export const getCurrentCampaignService = async (req) => {
   const status = req.query.status;
-
-  await syncCampaignStatuses();
-
-  const campaign = await Campaign.findOne({ status }).select(
+  const campaign = await Campaign.findOne(getCampaignStatusFilter(status)).select(
     "-createdAt -updatedAt",
   );
 
   if (!campaign) {
     throw new AppError("Campaign not found", 404);
   }
+
+  await syncCampaignStatuses(campaign);
 
   return {
     status: 200,
@@ -105,10 +131,7 @@ export const getCampaginListService = async (req) => {
   const page = parseInt(req.query.page) || 1;
   const pageSize = parseInt(req.query.pageSize) || 100;
   const skip = (page - 1) * pageSize;
-
-  await syncCampaignStatuses();
-
-  let filters = {};
+  let filters = getCampaignStatusFilter(status);
 
   if (search?.trim()) {
     filters.title = { $regex: search, $options: "i" };
@@ -123,11 +146,6 @@ export const getCampaginListService = async (req) => {
   } else if (sort === "raised_asc") {
     sortOption = { raisedAmount: 1 };
   }
-
-  if (status) {
-    filters.status = status;
-  }
-
   const [campagins, total] = await Promise.all([
     Campaign.find(filters)
       .sort(sortOption)
@@ -136,6 +154,8 @@ export const getCampaginListService = async (req) => {
       .select("-updatedAt"),
     Campaign.countDocuments(filters),
   ]);
+
+  await syncCampaignStatuses(campagins);
 
   const totalPages = Math.ceil(total / pageSize);
 
@@ -165,12 +185,7 @@ export const getSingleCampaignService = async (req) => {
     throw new AppError("Campaign not found", 404);
   }
 
-  const previousStatus = campaign.status;
-  campaign.calculateStatus();
-
-  if (campaign.status !== previousStatus) {
-    await campaign.save();
-  }
+  await syncCampaignStatuses(campaign);
 
   return {
     status: 200,
@@ -223,6 +238,8 @@ export const updateCampaignService = async (req) => {
       runValidators: true,
     },
   );
+
+  await syncCampaignStatuses(updatedCampaign);
 
   return {
     status: 200,
