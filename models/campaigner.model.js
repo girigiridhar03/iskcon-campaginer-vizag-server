@@ -49,6 +49,16 @@ const campaignerSchema = new mongoose.Schema(
       enum: ["active", "close", "pending", "approved", "reject"],
       index: true,
     },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Register",
+      default: null,
+    },
+    approvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Register",
+      default: null,
+    },
   },
   { timestamps: true, versionKey: false },
 );

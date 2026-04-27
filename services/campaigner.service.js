@@ -36,6 +36,8 @@ export const createCampaignerService = async (req) => {
     templeDevoteInTouch,
   } = req.body;
 
+  const user = req.user;
+
   const requiredFields = [
     "name",
     "campaignId",
@@ -136,7 +138,7 @@ export const createCampaignerService = async (req) => {
     strict: true,
     trim: true,
   });
-  const existingSlug = await Campaigner.findOne({ slug });
+  const existingSlug = await Campaigner.findOne({ slug, campaignId });
 
   if (existingSlug) {
     throw new AppError("Campaigner with this name already exists", 409);
@@ -149,6 +151,10 @@ export const createCampaignerService = async (req) => {
     templeDevoteInTouch,
     targetAmount,
     status: req?.campaignerStatus,
+    ...(Boolean(req?.isCampaigner) === false && {
+      createdBy: user?.id,
+      approvedBy: user?.id,
+    }),
     image: {
       filename: imageResult?.filename,
       url: imageResult?.url,
@@ -201,6 +207,7 @@ export const getCampaignerService = async (req) => {
   const skip = (page - 1) * pageSize;
   const status = req.query.status;
   const campStatus = req.query.campStatus;
+  const devoteeId = req.query.devoteeId;
   const search = req.query.search;
   const sort = req.query.sort;
   let sortOptions = { raisedAmount: -1, _id: -1 };
@@ -239,6 +246,14 @@ export const getCampaignerService = async (req) => {
     options.templeDevoteInTouch = devotee._id;
   }
 
+  if (role !== "devotee" && devoteeId) {
+    if (!mongoose.isValidObjectId(devoteeId)) {
+      throw new AppError(`Invalid devoteeId: ${devoteeId}`, 400);
+    }
+
+    options.templeDevoteInTouch = devoteeId;
+  }
+
   if (search) {
     options.$or = [
       { name: { $regex: search, $options: "i" } },
@@ -263,6 +278,8 @@ export const getCampaignerService = async (req) => {
   const campaigners = await Campaigner.find(options)
     .populate("templeDevoteInTouch", "-createdAt -updatedAt")
     .populate("campaignId", "-createdAt -updatedAt")
+    .populate("createdBy", "name email role")
+    .populate("approvedBy", "name email role")
     .sort(sortOptions)
     .skip(skip)
     .limit(pageSize)
@@ -325,22 +342,34 @@ export const getCampaignerService = async (req) => {
 };
 
 export const getSingleCampaignerService = async (req) => {
-  const { slugId } = req.params;
+  const { slugId, campaignId } = req.params;
 
   if (!slugId) {
     throw new AppError("campaignerId is required", 400);
   }
-  let filter = { slug: slugId };
+
+  if (!campaignId) {
+    throw new AppError("CampaignId is required", 400);
+  }
+
+  if (!mongoose.isValidObjectId(campaignId)) {
+    throw new AppError("Invalid campaignId", 400);
+  }
+
+  let filter = { slug: slugId, campaignId };
 
   if (mongoose.isValidObjectId(slugId)) {
     filter = {
+      campaignId,
       $or: [{ slug: slugId }, { _id: slugId }],
     };
   }
 
   const campaigner = await Campaigner.findOne(filter)
     .populate("templeDevoteInTouch", "-createdAt -updatedAt")
-    .populate("campaignId", "-createdAt -updatedAt");
+    .populate("campaignId", "-createdAt -updatedAt")
+    .populate("createdBy", "name email role")
+    .populate("approvedBy", "name email role");
 
   if (!campaigner) {
     throw new AppError("Campaigner not found", 404);
@@ -453,6 +482,7 @@ export const getLastestDonorofCampaignerService = async (req) => {
 
 export const updateCampaignerService = async (req) => {
   const id = req.params.id;
+  const user = req.user;
 
   if (!id) {
     throw new AppError("CampaignerId is required", 400);
@@ -497,6 +527,13 @@ export const updateCampaignerService = async (req) => {
     throw new AppError("No fields provided for update", 400);
   }
 
+  const isPendingToActiveTransition =
+    previousStatus === "pending" && updateData.status === "active";
+
+  if (isPendingToActiveTransition) {
+    updateData.approvedBy = user.id;
+  }
+
   const updatedCampaigner = await Campaigner.findByIdAndUpdate(
     id,
     { $set: updateData },
@@ -506,7 +543,7 @@ export const updateCampaignerService = async (req) => {
     },
   );
 
-  if (previousStatus !== "active" && updateData.status === "active") {
+  if (isPendingToActiveTransition) {
     const phone = updatedCampaigner.phoneNumber.replace(/\D/g, "");
     const campaignerPhoneNumber = phone.startsWith("91") ? phone : `91${phone}`;
 

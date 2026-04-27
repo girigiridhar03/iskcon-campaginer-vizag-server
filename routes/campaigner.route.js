@@ -32,7 +32,7 @@ campaignerRouter.get(
   "/latestDonors/:campaignId/:slug",
   getLastestDonorofCampaigner,
 );
-campaignerRouter.get("/details/:slugId/", getSingleCampaigner);
+campaignerRouter.get("/details/:slugId/:campaignId", getSingleCampaigner);
 campaignerRouter.get("/:campaignId", getCampaigners);
 campaignerRouter.get("/admin/:campaignId", optionalAuth, getCampaigners);
 campaignerRouter.patch(
