@@ -3,24 +3,47 @@ import Campaigner from "../models/campaigner.model.js";
 import Donation from "../models/donation.model.js";
 import TempleDevote from "../models/templeDevote.model.js";
 import { AppError } from "../utils/AppError.js";
+import mongoose from "mongoose";
 
 export const cardSummaryService = async (req) => {
   const role = req?.user?.role;
   const userId = req?.user?.id;
+  const campaignId = req?.query?.campaignId;
 
   if (!role || !userId) {
     throw new AppError("Unauthorized user", 401);
   }
 
+  if (campaignId && !mongoose.isValidObjectId(campaignId)) {
+    throw new AppError("Invalid campaignId", 400);
+  }
+
   if (role === "admin") {
-    const [campaign, totalDonations, activeCampaigners, pendingCampaigners] =
+    const campaignFilter = campaignId
+      ? { _id: campaignId }
+      : { status: "active" };
+    const campaign = await Campaign.findOne(campaignFilter).select(
+      "targetAmount raisedAmount",
+    );
+
+    if (!campaign) {
+      throw new AppError("Campaign not found", 404);
+    }
+
+    const campaignerFilter = {
+      campaignId: campaign._id,
+    };
+
+    const donationFilter = {
+      campaign: campaign._id,
+      status: "success",
+    };
+
+    const [totalDonations, activeCampaigners, pendingCampaigners] =
       await Promise.all([
-        Campaign.findOne({ status: "active" }).select(
-          "targetAmount raisedAmount",
-        ),
-        Donation.countDocuments({ status: "success" }),
-        Campaigner.countDocuments({ status: "active" }),
-        Campaigner.countDocuments({ status: "pending" }),
+        Donation.countDocuments(donationFilter),
+        Campaigner.countDocuments({ ...campaignerFilter, status: "active" }),
+        Campaigner.countDocuments({ ...campaignerFilter, status: "pending" }),
       ]);
 
     return {
@@ -37,6 +60,7 @@ export const cardSummaryService = async (req) => {
   }
 
   if (role === "devotee") {
+    const campaignFilter = campaignId ? { campaignId } : {};
     const devotee = await TempleDevote.findOne({ userId: userId }).select(
       "_id",
     );
@@ -56,7 +80,11 @@ export const cardSummaryService = async (req) => {
     const devoteeId = devotee._id;
 
     const campaigners = await Campaigner.find(
-      { templeDevoteInTouch: devoteeId, status: "active" },
+      {
+        templeDevoteInTouch: devoteeId,
+        status: "active",
+        ...campaignFilter,
+      },
       "_id targetAmount raisedAmount",
     );
 
@@ -92,10 +120,12 @@ export const cardSummaryService = async (req) => {
         Campaigner.countDocuments({
           templeDevoteInTouch: devotee?._id,
           status: "active",
+          ...campaignFilter,
         }),
         Campaigner.countDocuments({
           templeDevoteInTouch: devotee?._id,
           status: "pending",
+          ...campaignFilter,
         }),
         Donation.countDocuments({
           campaigner: { $in: campaignerIds },
@@ -122,17 +152,25 @@ export const cardSummaryService = async (req) => {
 export const donationTrendService = async (req) => {
   const role = req?.user?.role;
   const userId = req?.user?.id;
+  const campaignId = req?.query?.campaignId;
 
   if (!role || !userId) {
     throw new AppError("Unauthorized user", 401);
   }
 
+  if (campaignId && !mongoose.isValidObjectId(campaignId)) {
+    throw new AppError("Invalid campaignId", 400);
+  }
+
   if (role === "admin") {
+    const matchFilter = {
+      status: "success",
+      ...(campaignId && { campaign: new mongoose.Types.ObjectId(campaignId) }),
+    };
+
     const trends = await Donation.aggregate([
       {
-        $match: {
-          status: "success",
-        },
+        $match: matchFilter,
       },
       {
         $group: {
@@ -189,7 +227,11 @@ export const donationTrendService = async (req) => {
     }
 
     const campaigners = await Campaigner.find(
-      { templeDevoteInTouch: devotee._id, status: "active" },
+      {
+        templeDevoteInTouch: devotee._id,
+        status: "active",
+        ...(campaignId && { campaignId }),
+      },
       "_id",
     );
 
