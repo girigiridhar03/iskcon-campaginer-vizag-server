@@ -53,6 +53,7 @@ iskcon-vizag-server/
 ├── models/                 # Mongoose schemas
 ├── middlewares/            # Auth, role checks, upload validation
 ├── routes/                 # API route definitions
+├── scripts/                # Manual maintenance and recovery scripts
 ├── utils/                  # Response helpers, GCS upload, DCC integration
 ├── receipt-template.pdf    # PDF template used for generated receipts
 ├── Dockerfile
@@ -141,6 +142,55 @@ Once running:
 
 - API base URL: `http://localhost:2345/api`
 - Health endpoint: `http://localhost:2345/health`
+
+## Maintenance Scripts
+
+The `scripts/` folder is for manual operational utilities that help recover or repair payment-related flows without changing the main API code path.
+
+### Reconcile a Captured Donation
+
+Use this when Razorpay shows a payment as captured, but the server did not fully finish the post-payment flow. For example:
+
+- the donation is still `pending` in MongoDB
+- the payment was captured but DCC sync did not complete
+- the receipt number was not saved
+- the WhatsApp/receipt flow did not run because capture processing was interrupted
+
+Run from the server folder:
+
+```bash
+cd iskcon-vizag-server
+npm run reconcile:donation -- <donationId> [razorpayPaymentId]
+```
+
+Examples:
+
+```bash
+npm run reconcile:donation -- 680d0f6b2b1c123456789abc
+npm run reconcile:donation -- 680d0f6b2b1c123456789abc pay_Qwerty123456
+```
+
+What this script does:
+
+- loads `.env`
+- connects to MongoDB
+- finds the donation and linked payment record
+- fetches payments for the Razorpay order
+- picks the latest captured payment, or uses the optional payment id you pass
+- re-runs the normal capture flow used by the app
+- updates donation/payment status and retries DCC sync and receipt/notification work
+
+Required environment variables:
+
+- `DB_URL`
+- `RAZORPAY_API_KEY`
+- `RAZORPAY_KEY_SECRET`
+
+Notes:
+
+- `donationId` is required and must be a valid MongoDB ObjectId
+- `razorpayPaymentId` is optional, and is useful if the order has multiple payment attempts
+- the script prints a JSON summary with the updated donation and payment state
 
 ## Authentication and Roles
 
