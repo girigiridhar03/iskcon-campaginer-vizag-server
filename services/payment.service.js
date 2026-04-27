@@ -120,6 +120,23 @@ const sendDonationNotifications = async (updatedDonation, campaigner) => {
   }
 };
 
+const syncDonationWithDcc = async (donation, gatewayPaymentId) => {
+  const dccResponse = await dccApiService(donation, gatewayPaymentId);
+
+  donation.dccApiResponse = dccResponse;
+  donation.gatewayPaymentId = donation.gatewayPaymentId || gatewayPaymentId;
+
+  if (dccResponse?.success) {
+    donation.receiptNumber =
+      donation.receiptNumber || dccResponse?.data?.ReceiptNumber || null;
+    donation.dccDataSentAt = donation.dccDataSentAt || new Date();
+  }
+
+  await donation.save();
+
+  return donation;
+};
+
 export const capturePaymentService = async ({
   gatewayOrderId,
   gatewayPaymentId,
@@ -166,22 +183,8 @@ export const capturePaymentService = async ({
       await paymentDoc.save();
     }
 
-    if (!existingDonation.dccApiResponse) {
-      const dccResponse = await dccApiService(
-        existingDonation,
-        gatewayPaymentId,
-      );
-
-      existingDonation.receiptNumber =
-        existingDonation.receiptNumber ||
-        dccResponse?.data?.ReceiptNumber ||
-        null;
-      existingDonation.gatewayPaymentId =
-        existingDonation.gatewayPaymentId || gatewayPaymentId;
-      existingDonation.dccDataSentAt = new Date();
-      existingDonation.dccApiResponse = dccResponse;
-
-      await existingDonation.save();
+    if (!existingDonation.dccDataSentAt) {
+      await syncDonationWithDcc(existingDonation, gatewayPaymentId);
     }
 
     return {
@@ -190,7 +193,18 @@ export const capturePaymentService = async ({
     };
   }
 
-  const dccResponse = await dccApiService(existingDonation, gatewayPaymentId);
+  paymentDoc.gatewayPaymentId = gatewayPaymentId;
+  paymentDoc.status = "captured";
+
+  if (gatewaySignature) {
+    paymentDoc.gatewaySignature = gatewaySignature;
+  }
+
+  if (rawResponse) {
+    paymentDoc.rawResponse = rawResponse;
+  }
+
+  await paymentDoc.save();
 
   const updatedDonation = await Donation.findOneAndUpdate(
     {
@@ -199,10 +213,7 @@ export const capturePaymentService = async ({
     },
     {
       status: "success",
-      receiptNumber: dccResponse?.data?.ReceiptNumber || null,
       gatewayPaymentId,
-      dccDataSentAt: new Date(),
-      dccApiResponse: dccResponse,
     },
     { returnDocument: "after" },
   );
@@ -227,27 +238,29 @@ export const capturePaymentService = async ({
         },
       ).populate("templeDevoteInTouch", "phoneNumber");
     }
-  }
-
-  paymentDoc.gatewayPaymentId = gatewayPaymentId;
-  paymentDoc.status = "captured";
-
-  if (gatewaySignature) {
-    paymentDoc.gatewaySignature = gatewaySignature;
-  }
-
-  if (rawResponse) {
-    paymentDoc.rawResponse = rawResponse;
-  }
-
-  await paymentDoc.save();
-
-  if (updatedDonation) {
     try {
-      await sendDonationNotifications(updatedDonation, updatedCampaigner);
+      const donationForSync = await Donation.findById(updatedDonation._id)
+        .populate("seva")
+        .populate({
+          path: "campaigner",
+          select: "templeDevoteInTouch",
+          populate: {
+            path: "templeDevoteInTouch",
+            select: "devoteeID",
+          },
+        });
+
+      if (donationForSync) {
+        const syncedDonation = await syncDonationWithDcc(
+          donationForSync,
+          gatewayPaymentId,
+        );
+
+        await sendDonationNotifications(syncedDonation, updatedCampaigner);
+      }
     } catch (error) {
       console.error(
-        "Payment captured but notification dispatch failed:",
+        "Payment captured but post-capture sync failed:",
         error,
       );
     }
@@ -267,6 +280,10 @@ export const verifyPaymentService = async (req) => {
 
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
     throw new AppError("Missing payment verification fields", 400);
+  }
+
+  if (!process.env.RAZORPAY_KEY_SECRET) {
+    throw new AppError("Razorpay key secret not configured", 500);
   }
 
   const generatedSignature = crypto

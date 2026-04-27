@@ -109,18 +109,24 @@ export const createDonationOrderService = async (req) => {
       },
     });
   } catch (error) {
+    await Donation.findByIdAndDelete(createDonation._id);
     throw new AppError(
       error?.error?.description || "Payment gateway error",
       error?.statusCode || 500,
     );
   }
 
-  await Payment.create({
-    donation: createDonation._id,
-    gatewayOrderId: order.id,
-    amount,
-    status: "created",
-  });
+  try {
+    await Payment.create({
+      donation: createDonation._id,
+      gatewayOrderId: order.id,
+      amount,
+      status: "created",
+    });
+  } catch (error) {
+    await Donation.findByIdAndDelete(createDonation._id);
+    throw error;
+  }
 
   return {
     status: 201,

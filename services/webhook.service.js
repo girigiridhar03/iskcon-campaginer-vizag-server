@@ -90,22 +90,24 @@ export const razorpayWebhookService = async (req, res) => {
 
     if (event.event === "payment.failed") {
       const payment = event.payload.payment.entity;
-      const donationId = payment.notes.donationId;
+      const donationId = payment.notes?.donationId;
 
       await Payment.findOneAndUpdate(
         { gatewayOrderId: payment.order_id, status: { $ne: "captured" } },
         { status: "failed", rawResponse: payment },
       );
 
-      await Donation.findOneAndUpdate(
-        { _id: donationId, status: { $ne: "success" } },
-        { status: "failed" },
-      );
+      if (donationId) {
+        await Donation.findOneAndUpdate(
+          { _id: donationId, status: { $ne: "success" } },
+          { status: "failed" },
+        );
+      }
     }
 
     return res.json({ status: "ok" });
   } catch (error) {
     console.error("Webhook error:", error);
-    return res.status(200).json({ status: "error_logged" });
+    return res.status(500).json({ status: "error_logged" });
   }
 };
