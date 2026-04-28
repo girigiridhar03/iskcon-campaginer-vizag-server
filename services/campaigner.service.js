@@ -3,7 +3,7 @@ import { AppError } from "../utils/AppError.js";
 import Campaign from "../models/campaign.model.js";
 import Media from "../models/media.model.js";
 import Campaigner from "../models/campaigner.model.js";
-import { uploadToGCS } from "../utils/GCS.js";
+import { deleteFromGCS, uploadToGCS } from "../utils/GCS.js";
 import TempleDevote from "../models/templeDevote.model.js";
 import Donation from "../models/donation.model.js";
 import slugify from "slugify";
@@ -596,6 +596,7 @@ export const deleteCampaignerService = async (req) => {
     );
   }
 
+  await deleteFromGCS(campaigner.image.filename);
   await campaigner.deleteOne();
 
   return {
