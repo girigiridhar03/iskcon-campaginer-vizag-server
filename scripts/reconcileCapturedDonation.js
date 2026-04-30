@@ -31,6 +31,11 @@ const getLatestCapturedPayment = (payments = []) => {
   })[0];
 };
 
+const isMissingRazorpayIdError = (error) =>
+  error?.statusCode === 400 &&
+  error?.error?.code === "BAD_REQUEST_ERROR" &&
+  error?.error?.description === "The id provided does not exist";
+
 const reconcileCapturedDonation = async () => {
   if (!donationId) {
     throw new Error(
@@ -48,7 +53,7 @@ const reconcileCapturedDonation = async () => {
     throw new Error(`Donation not found: ${donationId}`);
   }
 
-  const paymentDoc = await Payment.findOne({ donation: donation._id });
+  let paymentDoc = await Payment.findOne({ donation: donation._id });
 
   if (!paymentDoc?.gatewayOrderId) {
     throw new Error(
@@ -63,12 +68,11 @@ const reconcileCapturedDonation = async () => {
   }
 
   const { default: razorpay } = await import("../config/razorpay.js");
-  const paymentList = await razorpay.orders.fetchPayments(
-    paymentDoc.gatewayOrderId,
-  );
-  let capturedPayment = getLatestCapturedPayment(paymentList?.items);
+  let resolvedGatewayOrderId = paymentDoc.gatewayOrderId;
+  let paymentList = null;
+  let capturedPayment = null;
 
-  if (!capturedPayment && paymentIdArg) {
+  if (paymentIdArg) {
     const fetchedPayment = await razorpay.payments.fetch(paymentIdArg);
 
     if (fetchedPayment?.status !== "captured") {
@@ -77,13 +81,52 @@ const reconcileCapturedDonation = async () => {
       );
     }
 
-    if (fetchedPayment?.order_id !== paymentDoc.gatewayOrderId) {
+    if (!fetchedPayment?.order_id) {
       throw new Error(
-        `Provided payment ${paymentIdArg} belongs to order ${fetchedPayment?.order_id}, but DB payment record points to ${paymentDoc.gatewayOrderId}`,
+        `Provided payment ${paymentIdArg} does not include a Razorpay order id`,
       );
     }
 
+    if (fetchedPayment.order_id !== paymentDoc.gatewayOrderId) {
+      const existingPaymentForOrder = await Payment.findOne({
+        gatewayOrderId: fetchedPayment.order_id,
+      });
+
+      if (
+        existingPaymentForOrder &&
+        existingPaymentForOrder._id.toString() !== paymentDoc._id.toString()
+      ) {
+        const existingDonationId =
+          existingPaymentForOrder.donation?.toString() || "unknown";
+
+        if (existingDonationId !== donation._id.toString()) {
+          throw new Error(
+            `Provided payment ${paymentIdArg} belongs to order ${fetchedPayment.order_id}, but that order is already linked to payment ${existingPaymentForOrder._id} for donation ${existingDonationId}. Current donation ${donation._id} is linked to payment ${paymentDoc._id} with order ${paymentDoc.gatewayOrderId}.`,
+          );
+        }
+
+        paymentDoc = existingPaymentForOrder;
+      } else {
+        paymentDoc.gatewayOrderId = fetchedPayment.order_id;
+        await paymentDoc.save();
+      }
+
+      resolvedGatewayOrderId = fetchedPayment.order_id;
+    }
+
     capturedPayment = fetchedPayment;
+  }
+
+  try {
+    paymentList = await razorpay.orders.fetchPayments(resolvedGatewayOrderId);
+
+    if (!capturedPayment) {
+      capturedPayment = getLatestCapturedPayment(paymentList?.items);
+    }
+  } catch (error) {
+    if (!capturedPayment || !isMissingRazorpayIdError(error)) {
+      throw error;
+    }
   }
 
   if (!capturedPayment) {
@@ -104,7 +147,7 @@ const reconcileCapturedDonation = async () => {
   }
 
   const result = await capturePaymentService({
-    gatewayOrderId: paymentDoc.gatewayOrderId,
+    gatewayOrderId: resolvedGatewayOrderId,
     gatewayPaymentId: capturedPayment.id,
     rawResponse: capturedPayment,
     donationId: donation._id.toString(),

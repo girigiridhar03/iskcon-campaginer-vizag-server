@@ -7,6 +7,61 @@ import Campaign from "../models/campaign.model.js";
 import Campaigner from "../models/campaigner.model.js";
 import TempleDevote from "../models/templeDevote.model.js";
 
+const PENDING_DONATION_REUSE_WINDOW_MINUTES = 30;
+
+const buildPendingDonationReuseFilter = ({
+  donorPhone,
+  amount,
+  campaignId,
+  campaignerId,
+  sevaId,
+  prasadam,
+}) => ({
+  donorPhone,
+  amount: Number(amount),
+  campaign: campaignId,
+  campaigner: campaignerId,
+  status: "pending",
+  seva: sevaId ? new mongoose.Types.ObjectId(sevaId) : null,
+  prasadam: Boolean(prasadam),
+  createdAt: {
+    $gte: new Date(
+      Date.now() - PENDING_DONATION_REUSE_WINDOW_MINUTES * 60 * 1000,
+    ),
+  },
+});
+
+const buildDonationPayload = ({
+  donorName,
+  donorPhone,
+  amount,
+  email,
+  isAnonymous,
+  campaignId,
+  campaignerId,
+  sevaId,
+  pan,
+  address,
+  prasadam,
+}) => ({
+  donorName,
+  donorPhone,
+  amount: Number(amount),
+  donorEmail: email,
+  isAnonymous,
+  campaign: campaignId,
+  campaigner: campaignerId,
+  status: "pending",
+  seva: sevaId ? sevaId : null,
+  pan,
+  address,
+  prasadam,
+  gatewayPaymentId: undefined,
+  dccDataSentAt: undefined,
+  dccApiResponse: undefined,
+  receiptNumber: undefined,
+});
+
 export const createDonationOrderService = async (req) => {
   const {
     donorName,
@@ -84,21 +139,38 @@ export const createDonationOrderService = async (req) => {
     throw new AppError("Campaigner not found", 404);
   }
 
-  const createDonation = await Donation.create({
-    donorName: donorName,
+  const donationPayload = buildDonationPayload({
+    donorName,
     donorPhone,
-    amount: Number(amount),
-    donorEmail: email,
+    amount,
+    email,
     isAnonymous,
-    campaign: campaignId,
-    campaigner: isExistCampaigner._id,
-    status: "pending",
-    seva: sevaId ? sevaId : null,
+    campaignId,
+    campaignerId: isExistCampaigner._id,
+    sevaId,
     pan,
     address,
     prasadam,
   });
+  const reusableDonation = await Donation.findOne(
+    buildPendingDonationReuseFilter({
+      donorPhone,
+      amount,
+      campaignId,
+      campaignerId: isExistCampaigner._id,
+      sevaId,
+      prasadam,
+    }),
+  ).sort({ createdAt: -1 });
+
+  const createDonation = reusableDonation
+    ? await Donation.findByIdAndUpdate(reusableDonation._id, donationPayload, {
+        returnDocument: "after",
+      })
+    : await Donation.create(donationPayload);
+  const isReusedDonation = Boolean(reusableDonation);
   let order;
+
   try {
     order = await razorpay.orders.create({
       amount: Number(amount) * 100,
@@ -109,7 +181,10 @@ export const createDonationOrderService = async (req) => {
       },
     });
   } catch (error) {
-    await Donation.findByIdAndDelete(createDonation._id);
+    if (!isReusedDonation) {
+      await Donation.findByIdAndDelete(createDonation._id);
+    }
+
     throw new AppError(
       error?.error?.description || "Payment gateway error",
       error?.statusCode || 500,
@@ -117,20 +192,42 @@ export const createDonationOrderService = async (req) => {
   }
 
   try {
-    await Payment.create({
+    const existingPendingPayment = await Payment.findOne({
       donation: createDonation._id,
-      gatewayOrderId: order.id,
-      amount,
-      status: "created",
-    });
+      status: { $ne: "captured" },
+    }).sort({ createdAt: -1 });
+
+    if (existingPendingPayment) {
+      existingPendingPayment.gatewayOrderId = order.id;
+      existingPendingPayment.gatewayPaymentId = undefined;
+      existingPendingPayment.gatewaySignature = undefined;
+      existingPendingPayment.rawResponse = undefined;
+      existingPendingPayment.amount = Number(amount);
+      existingPendingPayment.currency = order.currency;
+      existingPendingPayment.status = "created";
+      await existingPendingPayment.save();
+    } else {
+      await Payment.create({
+        donation: createDonation._id,
+        gatewayOrderId: order.id,
+        amount,
+        currency: order.currency,
+        status: "created",
+      });
+    }
   } catch (error) {
-    await Donation.findByIdAndDelete(createDonation._id);
+    if (!isReusedDonation) {
+      await Donation.findByIdAndDelete(createDonation._id);
+    }
+
     throw error;
   }
 
   return {
     status: 201,
-    message: "Donation order created successfully",
+    message: isReusedDonation
+      ? "Donation retry order created successfully"
+      : "Donation order created successfully",
     resObj: {
       orderId: order.id,
       amount: order.amount,
